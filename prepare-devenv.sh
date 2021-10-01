@@ -58,6 +58,11 @@ if [ ! -d dev-env ]; then
     rm nanos-secure-sdk.tar.gz
     mv nanos-secure-sdk* dev-env/SDK/nanos-secure-sdk
 
+    wget https://github.com/LedgerHQ/nanox-secure-sdk/archive/1.3.0.tar.gz -O nanox-secure-sdk.tar.gz
+    tar xf nanox-secure-sdk.tar.gz
+    rm nanox-secure-sdk.tar.gz
+    mv nanox-secure-sdk* dev-env/SDK/nanox-secure-sdk
+
     python3 -m venv dev-env/ledger_py3
     source dev-env/ledger_py3/bin/activate
     pip install wheel
@@ -76,4 +81,5 @@ elif [[ $1 == "s" ]]; then
 elif [[ $1 == "x" ]]; then
     export BOLOS_SDK=$(pwd)/dev-env/SDK/nanox-secure-sdk
     export BOLOS_ENV=$(pwd)/dev-env/CC/nanox
+    export PATH=$(pwd)/dev-env/CC/nanox/clang-arm-fropi/bin:$(pwd)/dev-env/CC/nanox/gcc-arm-none-eabi-5_3-2016q1/bin:$PATH
 fi
