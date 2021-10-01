@@ -1,29 +1,7 @@
-/* package.json
-{
-  "name": "test",
-  "version": "0.0.1",
-  "description": "test",
-  "main": "example-sign.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "solana",
-  "license": "ISC",
-  "dependencies": {
-    "@ledgerhq/hw-transport-node-hid": "5.17.0",
-    "bs58": "4.0.1",
-    "tweetnacl": "1.0.3",
-    "@solana/web3.js": "0.90.0",
-    "assert": "2.0.0"
-  }
-}
-*/
-
-const Transport = require("@ledgerhq/hw-transport-node-hid").default;
-const bs58 = require("bs58");
-const nacl = require("tweetnacl");
-const solana = require("@solana/web3.js");
-const assert = require("assert");
+import Transport from "@ledgerhq/hw-transport";
+import { TransportError } from "@ledgerhq/errors";
+import bs58 from "bs58";
+import * as solana from "@solana/web3.js";
 
 const INS_GET_PUBKEY = 0x05;
 const INS_SIGN_MESSAGE = 0x06;
@@ -43,18 +21,19 @@ const STATUS_OK = 0x9000;
 /*
  * Helper for chunked send of large payloads
  */
-async function solana_send(transport, instruction, p1, payload) {
+async function solana_send(transport: Transport, instruction: number, p1: number, payload: Buffer) {
   var p2 = 0;
   var payload_offset = 0;
 
   if (payload.length > MAX_PAYLOAD) {
-    while ((payload.length - payload_offset) > MAX_PAYLOAD) {
+    while (payload.length - payload_offset > MAX_PAYLOAD) {
       const buf = payload.slice(payload_offset, payload_offset + MAX_PAYLOAD);
       payload_offset += MAX_PAYLOAD;
       console.log("send", (p2 | P2_MORE).toString(16), buf.length.toString(16), buf);
-      const reply = await transport.send(LEDGER_CLA, instruction, p1, (p2 | P2_MORE), buf);
+      const reply = await transport.send(LEDGER_CLA, instruction, p1, p2 | P2_MORE, buf);
       if (reply.length != 2) {
-        throw new TransportError(
+        //TODO: fix
+        throw TransportError(
           "solana_send: Received unexpected reply payload",
           "UnexpectedReplyPayload"
         );
@@ -70,15 +49,15 @@ async function solana_send(transport, instruction, p1, payload) {
   return reply.slice(0, reply.length - 2);
 }
 
-const BIP32_HARDENED_BIT = ((1 << 31) >>> 0);
-function _harden(n) {
+const BIP32_HARDENED_BIT = (1 << 31) >>> 0;
+function _harden(n: number) {
   return (n | BIP32_HARDENED_BIT) >>> 0;
 }
 
-function solana_derivation_path(account, change) {
+function solana_derivation_path(account?: number, change?: number) {
   var length;
-  if (typeof(account) === 'number') {
-    if (typeof(change) === 'number') {
+  if (typeof account === "number") {
+    if (typeof change === "number") {
       length = 4;
     } else {
       length = 3;
@@ -87,27 +66,31 @@ function solana_derivation_path(account, change) {
     length = 2;
   }
 
-  var derivation_path = Buffer.alloc(1 + (length * 4));
+  var derivation_path = Buffer.alloc(1 + length * 4);
   var offset = 0;
   offset = derivation_path.writeUInt8(length, offset);
-  offset = derivation_path.writeUInt32BE(_harden(44), offset);  // Using BIP44
+  offset = derivation_path.writeUInt32BE(_harden(44), offset); // Using BIP44
   offset = derivation_path.writeUInt32BE(_harden(501), offset); // Solana's BIP44 path
 
   if (length > 2) {
-    offset = derivation_path.writeUInt32BE(_harden(account), offset);
+    offset = derivation_path.writeUInt32BE(_harden(account as number), offset);
     if (length == 4) {
-      offset = derivation_path.writeUInt32BE(_harden(change), offset);
+      offset = derivation_path.writeUInt32BE(_harden(change as number), offset);
     }
   }
 
   return derivation_path;
 }
 
-async function solana_ledger_get_pubkey(transport, derivation_path) {
+async function solana_ledger_get_pubkey(transport: Transport, derivation_path: Buffer) {
   return solana_send(transport, INS_GET_PUBKEY, P1_NON_CONFIRM, derivation_path);
 }
 
-async function solana_ledger_sign_transaction(transport, derivation_path, transaction) {
+async function solana_ledger_sign_transaction(
+  transport: Transport,
+  derivation_path: Buffer,
+  transaction: solana.Transaction
+) {
   const msg_bytes = transaction.compileMessage().serialize();
 
   // XXX: Ledger app only supports a single derivation_path per call ATM
@@ -119,9 +102,7 @@ async function solana_ledger_sign_transaction(transport, derivation_path, transa
   return solana_send(transport, INS_SIGN_MESSAGE, P1_CONFIRM, payload);
 }
 
-( async () => {
-  var transport = await Transport.create();
-
+export async function runSignTest(transport: Transport) {
   const from_derivation_path = solana_derivation_path();
   const from_pubkey_bytes = await solana_ledger_get_pubkey(transport, from_derivation_path);
   const from_pubkey_string = bs58.encode(from_pubkey_bytes);
@@ -143,16 +124,17 @@ async function solana_ledger_sign_transaction(transport, derivation_path, transa
   // XXX: Fake blockhash so this example doesn't need a
   // network connection. It should be queried from the
   // cluster in normal use.
-  const recentBlockhash = bs58.encode(Buffer.from([
-    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-      3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-  ]));
+  const recentBlockhash = bs58.encode(
+    Buffer.from([
+      3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+      3,
+    ])
+  );
 
   var tx = new solana.Transaction({
     recentBlockhash,
     feePayer: from_pubkey,
-  })
-  .add(ix);
+  }).add(ix);
 
   const sig_bytes = await solana_ledger_sign_transaction(transport, from_derivation_path, tx);
 
@@ -161,5 +143,4 @@ async function solana_ledger_sign_transaction(transport, derivation_path, transa
 
   tx.addSignature(from_pubkey, sig_bytes);
   console.log("--- verifies:", tx.verifySignatures());
-})().catch(e => console.log(e) );
-
+}

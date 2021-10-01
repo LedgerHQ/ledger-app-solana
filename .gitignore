@@ -10,3 +10,4 @@ src/glyphs.h
 gitignore
 .vagrant
 libsol/target
+node_modules
