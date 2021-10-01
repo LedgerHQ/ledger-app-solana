@@ -15,11 +15,11 @@ Current Features:
 
 Install Vagrant and VirtualBox.
 
-Clone this git repo recursively, such that it includes the BOLOS SDK in a submodule:
+Clone this git repo:
 
 ```bash
-$ git clone --recursive git@github.com:solana-labs/ledger-app-solana.git
-cd ledger-app-solana
+$ git clone git@github.com:LedgerHQ/app-solana.git
+$ cd app-solana
 ```
 
 ## Creating the development environment
@@ -36,6 +36,13 @@ To enter the VM:
 $ vagrant ssh
 ```
 
+To set up environment and build:
+
+```bash
+$ source prepare-devenv.sh x
+$ make
+```
+
 ## Alternative Setup, For those not using Vagrant
 
 To build and install the app on your Ledger Nano S you must set up the Ledger Nano S build environments. Please follow the Getting Started instructions at [here](https://ledger.readthedocs.io/en/latest/userspace/getting_started.html).
@@ -50,6 +57,8 @@ sudo apt install python3-venv python3-dev libudev-dev libusb-1.0-0-dev
 # (x or s, depending on your device)
 source prepare-devenv.sh x
 ```
+
+Make sure you can run 32 bit apps on x64 (ubuntu: apt install libc6-i386)
 
 ## Building and installing
 
