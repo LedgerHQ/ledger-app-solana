@@ -125,7 +125,7 @@ UX_STEP_NOCB(
   ux_idle_flow_1_step,
   pnn,
   {
-    &C_solana_logo,
+    &C_velas_logo,
     "Application",
     "is ready",
   });

@@ -50,9 +50,9 @@ enum ApduReply {
 
     ApduReplyNoApduReceived               = 0x6982,
 
-    ApduReplySolanaInvalidMessage         = 0x6a80,
-    ApduReplySolanaSummaryFinalizeFailed  = 0x6f00,
-    ApduReplySolanaSummaryUpdateFailed    = 0x6f01,
+    ApduReplyVelasInvalidMessage         = 0x6a80,
+    ApduReplyVelasSummaryFinalizeFailed  = 0x6f00,
+    ApduReplyVelasSummaryUpdateFailed    = 0x6f01,
 
     ApduReplyUnimplementedInstruction     = 0x6d00,
     ApduReplyInvalidCla                   = 0x6e00,

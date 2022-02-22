@@ -99,7 +99,7 @@ UX_STEP_NOCB_INIT(
             flags |=  DisplayFlagLongPubkeys;
         }
         if (transaction_summary_display_item(step_index, flags)) {
-            THROW(ApduReplySolanaSummaryUpdateFailed);
+            THROW(ApduReplyVelasSummaryUpdateFailed);
         }
     },
     {
@@ -127,7 +127,7 @@ void handleSignMessage(
     volatile unsigned int *tx
 ) {
     if (dataLength == 0) {
-        THROW(ApduReplySolanaInvalidMessage);
+        THROW(ApduReplyVelasInvalidMessage);
     }
 
     int deprecated_host = ((dataLength & DATA_HAS_LENGTH_PREFIX) != 0);
@@ -165,7 +165,7 @@ void handleSignMessage(
         // first APDU buffer is an error, since we haven't yet received a
         // derivation path.
         if (G_numDerivationPaths == 0) {
-            THROW(ApduReplySolanaInvalidMessage);
+            THROW(ApduReplyVelasInvalidMessage);
         }
     }
 
@@ -174,7 +174,7 @@ void handleSignMessage(
         messageLength = U2BE(dataBuffer, 0);
         dataBuffer += 2;
         if (messageLength != (dataLength - 2)) {
-            THROW(ApduReplySolanaInvalidMessage);
+            THROW(ApduReplyVelasInvalidMessage);
         }
     } else {
         messageLength = dataLength;
@@ -198,8 +198,8 @@ void handleSignMessage(
     Parser parser = {G_message, G_messageLength};
     MessageHeader header;
     if (parse_message_header(&parser, &header)) {
-        // This is not a valid Solana message
-        THROW(ApduReplySolanaInvalidMessage);
+        // This is not a valid Velas message
+        THROW(ApduReplyVelasInvalidMessage);
         return;
     } else {
         uint8_t signer_pubkey[32];
@@ -268,7 +268,7 @@ void handleSignMessage(
 
         ux_flow_init(0, flow_steps, NULL);
     } else {
-        THROW(ApduReplySolanaSummaryFinalizeFailed);
+        THROW(ApduReplyVelasSummaryFinalizeFailed);
         return;
     }
 

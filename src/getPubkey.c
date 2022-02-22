@@ -13,15 +13,15 @@ int read_derivation_path(
     uint32_t *derivationPath
 ) {
     if (size == 0) {
-        THROW(ApduReplySolanaInvalidMessage);
+        THROW(ApduReplyVelasInvalidMessage);
     }
     size_t len = dataBuffer[0];
     dataBuffer += 1;
     if (len < 0x01 || len > BIP32_PATH) {
-        THROW(ApduReplySolanaInvalidMessage);
+        THROW(ApduReplyVelasInvalidMessage);
     }
     if (1 + 4 * len > size) {
-        THROW(ApduReplySolanaInvalidMessage);
+        THROW(ApduReplyVelasInvalidMessage);
     }
 
     for (unsigned int i = 0; i < len; i++) {
