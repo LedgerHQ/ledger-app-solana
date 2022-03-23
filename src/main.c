@@ -92,7 +92,6 @@ void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx, int rx)
                     G_io_apdu_buffer[4] = LEDGER_PATCH_VERSION;
                     *tx = 5;
                     THROW(ApduReplySuccess);
-                    break;
 
                 case INS_GET_PUBKEY:
                 case INS_GET_PUBKEY16:
@@ -121,7 +120,6 @@ void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx, int rx)
 
                 default:
                     THROW(ApduReplyUnimplementedInstruction);
-                    break;
             }
         }
         CATCH(ApduReplySdkExceptionIoReset) {
@@ -218,9 +216,6 @@ void app_main(void) {
         }
         END_TRY;
     }
-
-//return_to_dashboard:
-    return;
 }
 
 // override point, but nothing more to do

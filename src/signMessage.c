@@ -200,7 +200,6 @@ void handleSignMessage(
     if (parse_message_header(&parser, &header)) {
         // This is not a valid Solana message
         THROW(ApduReplySolanaInvalidMessage);
-        return;
     } else {
         uint8_t signer_pubkey[32];
         getPublicKey(G_derivationPath, signer_pubkey, G_derivationPathLength);
@@ -269,7 +268,6 @@ void handleSignMessage(
         ux_flow_init(0, flow_steps, NULL);
     } else {
         THROW(ApduReplySolanaSummaryFinalizeFailed);
-        return;
     }
 
     *flags |= IO_ASYNCH_REPLY;

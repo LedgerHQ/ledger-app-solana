@@ -24,7 +24,7 @@ static void allow_blind_sign_data_change(enum BlindSign blind_sign) {
     ui_idle();
 }
 
-const char const * const no_yes_data_getter_values[] = {
+const char const * no_yes_data_getter_values[] = {
   "No",
   "Yes",
   "Back"
