@@ -139,7 +139,7 @@ static int parse_vote_update_validator_id_instruction(
     if (instruction->data_length == sizeof(uint32_t)) {
         // 1.0.8+, 1.1.3+ format
         // https://github.com/solana-labs/solana/pull/8947
-        BAIL_IF(instruction_accounts_iterator_next(&it, &info->new_validator_id))
+        BAIL_IF(instruction_accounts_iterator_next(&it, &info->new_validator_id));
     } else if (
         instruction->data_length == (sizeof(uint32_t) + sizeof(Pubkey))
     ) {

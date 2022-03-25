@@ -125,7 +125,7 @@ static int parse_initialize_multisig_spl_token_instruction(
     BAIL_IF(instruction_accounts_iterator_next(&it, &info->multisig_account));
     // Skip rent sysvar
     BAIL_IF(instruction_accounts_iterator_next(&it, NULL));
-    BAIL_IF(parse_spl_token_multisigners(&it, &info->signers))
+    BAIL_IF(parse_spl_token_multisigners(&it, &info->signers));
 
     return 0;
 }
@@ -143,7 +143,7 @@ static int parse_spl_token_sign(
     } else {
         sign->kind = SplTokenSignKindMulti;
         BAIL_IF(instruction_accounts_iterator_next(it, &sign->multi.account));
-        BAIL_IF(parse_spl_token_multisigners(it, &sign->multi.signers))
+        BAIL_IF(parse_spl_token_multisigners(it, &sign->multi.signers));
     }
     return 0;
 }

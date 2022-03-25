@@ -222,7 +222,7 @@ static int parse_stake_lockupargs(
     }
     BAIL_IF(parse_option(parser, &option));
     if (option == OptionSome) {
-        BAIL_IF(parse_u64(parser, &lockup->epoch))
+        BAIL_IF(parse_u64(parser, &lockup->epoch));
         present |= StakeLockupHasEpoch;
     }
     if (parse_custodian) {

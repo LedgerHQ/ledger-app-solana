@@ -2,7 +2,7 @@
 #include <string.h>
 
 #define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
-#define BAIL_IF(x) {int err = x; if (err) return err;}
+#define BAIL_IF(x) do {int err = x; if (err) return err;} while (0)
 #define MIN(a, b) ((a) < (b) ? (a) : (b));
 
 #define assert_string_equal(actual, expected) \
