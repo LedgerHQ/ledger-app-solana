@@ -5,16 +5,20 @@
 
 int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     Parser parser = {Data, Size};
-    MessageHeader header;
+    PrintConfig print_config;
+    MessageHeader *header = &print_config.header;
 
-    if (parse_message_header(&parser, &header)) {
+    print_config.expert_mode = true;
+    print_config.signer_pubkey = NULL;
+
+    if (parse_message_header(&parser, header)) {
         // This is not a valid Solana message
         return 0;
     }
     transaction_summary_reset();
-    process_message_body(parser.buffer, parser.buffer_length, &header);
+    process_message_body(parser.buffer, parser.buffer_length, &print_config);
 
-    transaction_summary_set_fee_payer_pubkey(&header.pubkeys[0]);
+    transaction_summary_set_fee_payer_pubkey(&header->pubkeys[0]);
 
     enum SummaryItemKind summary_step_kinds[MAX_TRANSACTION_SUMMARY_ITEMS];
     size_t num_summary_steps = 0;

@@ -25,6 +25,7 @@ add_library(sol
     ${LIBSOL_DIR}/instruction.c
     ${LIBSOL_DIR}/message.c
     ${LIBSOL_DIR}/parser.c
+    ${LIBSOL_DIR}/print_config.c
     ${LIBSOL_DIR}/printer.c
     ${LIBSOL_DIR}/rfc3339.c
     ${LIBSOL_DIR}/serum_assert_owner_instruction.c
@@ -43,5 +44,5 @@ target_include_directories(sol PUBLIC ${LIBSOL_DIR}/include)
 add_executable(fuzz_message fuzz_message.c)
 
 target_link_libraries(fuzz_message PUBLIC sol)
-target_compile_options(fuzz_message PUBLIC -fsanitize=fuzzer,address,undefined)
-target_link_options(fuzz_message PUBLIC -fsanitize=fuzzer,address,undefined)
+target_compile_options(fuzz_message PUBLIC -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined)
+target_link_options(fuzz_message PUBLIC -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined)
