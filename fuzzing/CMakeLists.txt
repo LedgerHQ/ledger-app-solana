@@ -43,6 +43,15 @@ target_include_directories(sol PUBLIC ${LIBSOL_DIR}/include)
 
 add_executable(fuzz_message fuzz_message.c)
 
+# compatible with ClusterFuzzLite
+if (NOT DEFINED ENV{LIB_FUZZING_ENGINE})
+	set(COMPILATION_FLAGS_ "-fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined")
+else()
+	set(COMPILATION_FLAGS_ "$ENV{LIB_FUZZING_ENGINE} $ENV{CXXFLAGS}")
+endif()
+
+string(REPLACE " " ";" COMPILATION_FLAGS ${COMPILATION_FLAGS_})
+
 target_link_libraries(fuzz_message PUBLIC sol)
-target_compile_options(fuzz_message PUBLIC -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined)
-target_link_options(fuzz_message PUBLIC -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined)
+target_compile_options(fuzz_message PUBLIC ${COMPILATION_FLAGS})
+target_link_options(fuzz_message PUBLIC ${COMPILATION_FLAGS})
