@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "sign-real": "ts-node ./src/sign-real-device",
+    "sign-speculos": "ts-node ./src/sign-speculos"
+  },
+  "dependencies": {
+    "@ledgerhq/hw-transport-node-hid": "^6.7.0",
+    "@ledgerhq/hw-transport-node-speculos": "^6.7.0",
+    "@solana/web3.js": "^1.29.2",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bs58": "^4.0.1"
+  }
+}
