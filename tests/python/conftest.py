@@ -47,7 +47,7 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize("firmware", fw_list, ids=ids)
 
 def prepare_speculos_args(firmware):
-    speculos_args = ["--model", firmware.device, "--sdk", firmware.version]
+    speculos_args = []
     # Uncomment line below to enable display
     # speculos_args += ["--display", "qt"]
 

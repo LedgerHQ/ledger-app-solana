@@ -1,9 +1,7 @@
-from typing import List, Optional
+from typing import List
 from enum import IntEnum
 import base58
 from nacl.signing import VerifyKey
-
-from ..utils import bip32_harden
 
 
 PROGRAM_ID_SYSTEM = "11111111111111111111111111111111"
@@ -11,23 +9,6 @@ PROGRAM_ID_SYSTEM = "11111111111111111111111111111111"
 # Fake blockhash so this example doesn't need a network connection. It should be queried from the cluster in normal use.
 FAKE_RECENT_BLOCKHASH = "11111111111111111111111111111111"
 
-
-def calculate_solana_derivation_path(account: Optional[int] = None, change: Optional[int] = None):
-    length = 2
-    if account is not None:
-        length += 1
-        if change is not None:
-            length += 1
-
-    derivation_path: bytes = (length).to_bytes(1, byteorder='big')
-    derivation_path += (bip32_harden(44)).to_bytes(4, byteorder='big')
-    derivation_path += (bip32_harden(501)).to_bytes(4, byteorder='big')
-
-    if account != None:
-        derivation_path += (bip32_harden(account)).to_bytes(4, byteorder='big')
-        if change != None:
-            derivation_path += (bip32_harden(change)).to_bytes(4, byteorder='big')
-    return derivation_path
 
 def verify_signature(from_public_key: bytes, message: bytes, signature: bytes):
     assert len(signature) == 64, "signature size incorrect"

@@ -1,7 +1,11 @@
-from typing import List
+from typing import List, Generator
 from enum import IntEnum
+from contextlib import contextmanager
 
 from ragger.backend.interface import BackendInterface, RAPDU
+
+from ..utils import validate_displayed_message
+
 
 class INS(IntEnum):
     # DEPRECATED - Use non "16" suffixed variants below
@@ -72,37 +76,63 @@ class SolanaClient:
     def __init__(self, client):
         self._client = client
 
+
     def get_public_key(self, derivation_path : bytes) -> bytes:
         public_key:RAPDU = self._client.exchange(CLA, INS.INS_GET_PUBKEY, P1_NON_CONFIRM, P2_MORE, derivation_path)
         assert len(public_key.data) == PUBLIC_KEY_LENGTH, "'from' public key size incorrect"
         return public_key.data
 
-    def sign_message(self, derivation_path : bytes, message: bytes, accept: bool) -> RAPDU:
-        assert len(message) <= 65535, "Message to sign is too long"
 
+    def split_and_prefix_message(self, derivation_path : bytes, message: bytes) -> List[bytes]:
+        assert len(message) <= 65535, "Message to send is too long"
         header: bytes = _extend_and_serialize_multiple_derivations_paths([derivation_path])
-
         # Check to see if this data needs to be split up and sent in chunks.
         max_size = MAX_CHUNK_SIZE - len(header)
         message_splited = [message[x:x+max_size] for x in range(0, len(message), max_size)]
         # Add the header to every chunk
-        message_splited_prefixed = [header + s for s in message_splited]
+        return [header + s for s in message_splited]
+
+
+    def send_message_batch(self, messages: List[bytes], p1: int) -> RAPDU:
+        for m in messages:
+            self._client.exchange(CLA, INS.INS_SIGN_MESSAGE, p1, P2_MORE | P2_EXTEND, m)
+
+
+    @contextmanager
+    def send_async_sign_message(self, derivation_path : bytes, message: bytes) -> Generator[None, None, None]:
+        message_splited_prefixed = self.split_and_prefix_message(derivation_path, message)
 
         # Send all chunks with P2_MORE except for the last chunk, and P2_EXTEND if we send more than one chunk
         if len(message_splited_prefixed) > 1:
-            final_p2 = P2_EXTEND
-            for m in message_splited_prefixed[:-1]:
-                self._client.exchange(CLA, INS.INS_SIGN_MESSAGE, P1_CONFIRM, P2_MORE | P2_EXTEND, m)
+            final_p2 |= P2_EXTEND
+            send_message_batch(message_splited_prefixed[:-1], P1_CONFIRM)
         else:
             final_p2 = 0
 
-        # response = self._exchange(INS_SIGN_MESSAGE, P1_CONFIRM, final_p2, message_splited_prefixed[-1])
         with self._client.exchange_async(CLA, INS.INS_SIGN_MESSAGE, P1_CONFIRM, final_p2, message_splited_prefixed[-1]):
-            for _ in range(3):
-                self._client.right_click()
-            if not accept:
-                self._client.right_click()
-            self._client.both_click()
+            yield
 
+
+    def validate_sign_message(self):
+        validate_displayed_message(self._client, 3)
+
+
+    def refuse_to_sign_message(self):
+        validate_displayed_message(self._client, 3 + 1)
+
+
+    def get_async_response(self) -> RAPDU:
         return self._client.last_async_response
 
+
+    def send_blind_sign_message(self, derivation_path : bytes, message: bytes) -> RAPDU:
+        message_splited_prefixed = self.split_and_prefix_message(derivation_path, message)
+
+        # Send all chunks with P2_MORE except for the last chunk, and P2_EXTEND if we send more than one chunk
+        if len(message_splited_prefixed) > 1:
+            final_p2 |= P2_EXTEND
+            send_message_batch(message_splited_prefixed[:-1], P1_NON_CONFIRM)
+        else:
+            final_p2 = 0
+
+        return self._client.exchange(CLA, INS.INS_SIGN_MESSAGE, P1_NON_CONFIRM, final_p2, message_splited_prefixed[-1])

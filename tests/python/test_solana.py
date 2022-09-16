@@ -1,52 +1,72 @@
 from time import sleep
-from ragger.backend.interface import BackendInterface, RAPDU, RaisePolicy
+import base58
+
+from ragger.backend.interface import RAPDU, RaisePolicy
 
 from .apps.solana import SolanaClient, ErrorType
-from .apps.solana_cmd_builder import calculate_solana_derivation_path, SystemInstructionTransfer, Message, verify_signature
+from .apps.solana_cmd_builder import SystemInstructionTransfer, Message, verify_signature
+from .apps.solana_utils import FOREIGN_PUBLIC_KEY, FOREIGN_PUBLIC_KEY_2, AMOUNT, AMOUNT_2, SOL_PACKED_DERIVATION_PATH, SOL_PACKED_DERIVATION_PATH_2
 
-
-def test_solana_simple_transfer(client, firmware):
-    from_derivation_path = calculate_solana_derivation_path(12345)
-    to_derivation_path = calculate_solana_derivation_path()
-
+def test_solana_simple_transfer_ok_1(client, firmware):
     sol = SolanaClient(client)
-    from_public_key = sol.get_public_key(from_derivation_path)
-    print("Transfer FROM public key :", from_public_key)
-    to_public_key = sol.get_public_key(to_derivation_path)
-    print("Transfer TO public key :", to_public_key)
+    from_public_key = sol.get_public_key(SOL_PACKED_DERIVATION_PATH)
 
-    instruction: SystemInstructionTransfer = SystemInstructionTransfer(from_public_key, to_public_key, 42)
-    print("SystemInstructionTransfer :", instruction)
-
+    # Create instruction
+    instruction: SystemInstructionTransfer = SystemInstructionTransfer(from_public_key, FOREIGN_PUBLIC_KEY, AMOUNT)
     message: bytes = Message([instruction]).serialize()
-    print("Message :", message)
 
-    signature: bytes = sol.sign_message(from_derivation_path, message, True).data
-    print("Received signature :", signature)
+    with sol.send_async_sign_message(SOL_PACKED_DERIVATION_PATH, message):
+        sol.validate_sign_message()
+    signature: bytes = sol.get_async_response().data
 
     verify_signature(from_public_key, message, signature)
 
     sleep(0.1)
 
-def test_solana_simple_transfer_refused(client, firmware):
-    from_derivation_path = calculate_solana_derivation_path(12345)
-    to_derivation_path = calculate_solana_derivation_path()
 
+def test_solana_simple_transfer_ok_2(client, firmware):
     sol = SolanaClient(client)
-    from_public_key = sol.get_public_key(from_derivation_path)
-    print("Transfer FROM public key :", from_public_key)
-    to_public_key = sol.get_public_key(to_derivation_path)
-    print("Transfer TO public key :", to_public_key)
+    from_public_key = sol.get_public_key(SOL_PACKED_DERIVATION_PATH_2)
 
-    instruction: SystemInstructionTransfer = SystemInstructionTransfer(from_public_key, to_public_key, 42)
-    print("SystemInstructionTransfer :", instruction)
-
+    # Create instruction
+    instruction: SystemInstructionTransfer = SystemInstructionTransfer(from_public_key, FOREIGN_PUBLIC_KEY_2, AMOUNT_2)
     message: bytes = Message([instruction]).serialize()
-    print("Message :", message)
+
+    with sol.send_async_sign_message(SOL_PACKED_DERIVATION_PATH_2, message):
+        sol.validate_sign_message()
+    signature: bytes = sol.get_async_response().data
+
+    verify_signature(from_public_key, message, signature)
+
+    sleep(0.1)
+
+
+def test_solana_simple_transfer_refused(client, firmware):
+    sol = SolanaClient(client)
+    from_public_key = sol.get_public_key(SOL_PACKED_DERIVATION_PATH)
+
+    instruction: SystemInstructionTransfer = SystemInstructionTransfer(from_public_key, FOREIGN_PUBLIC_KEY, AMOUNT)
+    message: bytes = Message([instruction]).serialize()
+
+    with sol.send_async_sign_message(SOL_PACKED_DERIVATION_PATH, message):
+        client.raise_policy = RaisePolicy.RAISE_NOTHING
+        sol.refuse_to_sign_message()
+
+    rapdu: RAPDU = sol.get_async_response()
+    assert rapdu.status == ErrorType.USER_CANCEL
+
+    sleep(0.1)
+
+
+def test_solana_blind_sign_refused(client, firmware):
+    sol = SolanaClient(client)
+    from_public_key = sol.get_public_key(SOL_PACKED_DERIVATION_PATH)
+
+    instruction: SystemInstructionTransfer = SystemInstructionTransfer(from_public_key, FOREIGN_PUBLIC_KEY, AMOUNT)
+    message: bytes = Message([instruction]).serialize()
 
     client.raise_policy = RaisePolicy.RAISE_NOTHING
-    rapdu: RAPDU = sol.sign_message(from_derivation_path, message, False)
-    print("Received rapdu :", rapdu)
+    rapdu: RAPDU = sol.send_blind_sign_message(SOL_PACKED_DERIVATION_PATH, message)
     assert rapdu.status == ErrorType.USER_CANCEL
 
     sleep(0.1)
