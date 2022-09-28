@@ -45,6 +45,7 @@ enum SummaryItemKind {
     SummaryItemString,
     SummaryItemTimestamp,
 };
+typedef enum SummaryItemKind SummaryItemKind_t;
 
 typedef struct SummaryItem SummaryItem;
 
