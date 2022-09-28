@@ -60,11 +60,11 @@ int handle_check_address(check_address_parameters_t *params) {
         PRINTF("Failed to derive public key\n");
         return 0;
     }
-    // Only public_key_str is usefull in this context
+    // Only public_key_str is useful in this context
     UNUSED(public_key);
 
     if (strcmp(params->address_to_check, public_key_str) != 0) {
-        PRINTF("Adress %s != %s\n", params->address_to_check, public_key_str);
+        PRINTF("Address %s != %s\n", params->address_to_check, public_key_str);
         return 0;
     }
 
