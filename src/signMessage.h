@@ -11,6 +11,6 @@ void handle_sign_message_receive_apdus(uint8_t p1,
                                        const uint8_t *dataBuffer,
                                        size_t dataLength);
 
-void handle_sign_message_parse_message(volatile unsigned int *tx);
+void handle_sign_message_parse_message(bool called_from_swap, volatile unsigned int *tx);
 
-void handle_sign_message_UI(volatile unsigned int *flags);
+void handle_sign_message_UI(bool called_from_swap, volatile unsigned int *flags);
