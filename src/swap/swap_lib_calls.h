@@ -28,7 +28,7 @@ typedef struct check_address_parameters_s {
     unsigned char *coin_configuration;
     unsigned char coin_configuration_length;
     // serialized path, segwit, version prefix, hash used, dictionary etc.
-    // fields and serialization format depends on spesific coin app
+    // fields and serialization format depends on specific coin app
     unsigned char *address_parameters;
     unsigned char address_parameters_length;
     char *address_to_check;
