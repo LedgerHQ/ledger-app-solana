@@ -4,18 +4,27 @@
 #include "cx.h"
 #include "menu.h"
 #include "utils.h"
+
 #include "sol/parser.h"
 #include "sol/printer.h"
 #include "sol/print_config.h"
 #include "sol/message.h"
 #include "sol/transaction_summary.h"
 
-static uint8_t G_message[MAX_MESSAGE_LENGTH];
-static int G_messageLength;
-uint8_t G_numDerivationPaths;
-static uint32_t G_derivationPath[BIP32_PATH];
-static uint32_t G_derivationPathLength;
-static bool G_non_confirm_requested;
+typedef struct sign_message_ctx_s {
+    int messageLength;
+    uint8_t message[MAX_MESSAGE_LENGTH];
+    uint8_t numDerivationPaths;
+    uint32_t derivationPathLength;
+    uint32_t derivationPath[BIP32_PATH];
+    bool non_confirm_requested;
+} sign_message_ctx_t;
+
+static sign_message_ctx_t G_ctx;
+
+void reset_sign_message_context(void) {
+    MEMCLEAR(G_ctx);
+}
 
 static void derive_private_key(cx_ecfp_private_key_t *privateKey,
                                uint32_t *derivationPath,
@@ -41,23 +50,23 @@ static void derive_private_key(cx_ecfp_private_key_t *privateKey,
 }
 
 static uint8_t set_result_sign_message() {
-    uint8_t tx = 64;
+    uint8_t tx = SIGNATURE_LENGTH;
     uint8_t signature[SIGNATURE_LENGTH];
     cx_ecfp_private_key_t privateKey;
     BEGIN_TRY {
         TRY {
-            derive_private_key(&privateKey, G_derivationPath, G_derivationPathLength);
+            derive_private_key(&privateKey, G_ctx.derivationPath, G_ctx.derivationPathLength);
             cx_eddsa_sign(&privateKey,
                           CX_LAST,
                           CX_SHA512,
-                          G_message,
-                          G_messageLength,
+                          G_ctx.message,
+                          G_ctx.messageLength,
                           NULL,
                           0,
                           signature,
                           SIGNATURE_LENGTH,
                           NULL);
-            memcpy(G_io_apdu_buffer, signature, 64);
+            memcpy(G_io_apdu_buffer, signature, SIGNATURE_LENGTH);
         }
         FINALLY {
             MEMCLEAR(privateKey);
@@ -107,16 +116,6 @@ UX_STEP_NOCB_INIT(ux_summary_step,
     )
 ux_flow_step_t const *flow_steps[MAX_FLOW_STEPS];
 
-Hash UnrecognizedMessageHash;
-
-static void reset_global_context(void) {
-    MEMCLEAR(G_derivationPath);
-    MEMCLEAR(G_message);
-    G_messageLength = 0;
-    G_non_confirm_requested = false;
-    G_numDerivationPaths = 1;
-}
-
 void handle_sign_message_receive_apdus(uint8_t p1,
                                        uint8_t p2,
                                        const uint8_t *dataBuffer,
@@ -132,30 +131,32 @@ void handle_sign_message_receive_apdus(uint8_t p1,
     }
 
     if ((p2 & P2_EXTEND) == 0) {
-        // First APDU received, reset global context
-        reset_global_context();
+        // First APDU received, reset module context before parsing
+        reset_sign_message_context();
+        G_ctx.numDerivationPaths = 1;
 
         if (!deprecated_host) {
-            G_numDerivationPaths = dataBuffer[0];
+            G_ctx.numDerivationPaths = dataBuffer[0];
             dataBuffer++;
             dataLength--;
             // We only support one derivation path ATM
-            if (G_numDerivationPaths != 1) {
+            if (G_ctx.numDerivationPaths != 1) {
                 THROW(ApduReplySdkExceptionOverflow);
             }
         } else {
-            G_numDerivationPaths = 1;
+            G_ctx.numDerivationPaths = 1;
         }
 
-        G_derivationPathLength = read_derivation_path(dataBuffer, dataLength, G_derivationPath);
-        dataBuffer += 1 + G_derivationPathLength * 4;
-        dataLength -= 1 + G_derivationPathLength * 4;
+        G_ctx.derivationPathLength =
+            read_derivation_path(dataBuffer, dataLength, G_ctx.derivationPath);
+        dataBuffer += 1 + G_ctx.derivationPathLength * 4;
+        dataLength -= 1 + G_ctx.derivationPathLength * 4;
     } else {
         // P2_EXTEND is set to signal that this APDU buffer extends, rather
         // than replaces, the current message buffer. Asserting it with the
         // first APDU buffer is an error, since we haven't yet received a
         // derivation path.
-        if (G_numDerivationPaths == 0) {
+        if (G_ctx.numDerivationPaths == 0) {
             THROW(ApduReplySolanaInvalidMessage);
         }
     }
@@ -173,11 +174,11 @@ void handle_sign_message_receive_apdus(uint8_t p1,
     }
 
     // Append current message to global message reception buffer
-    if (G_messageLength + messageLength > MAX_MESSAGE_LENGTH) {
+    if (G_ctx.messageLength + messageLength > MAX_MESSAGE_LENGTH) {
         THROW(ApduReplySdkExceptionOverflow);
     }
-    memcpy(G_message + G_messageLength, dataBuffer, messageLength);
-    G_messageLength += messageLength;
+    memcpy(G_ctx.message + G_ctx.messageLength, dataBuffer, messageLength);
+    G_ctx.messageLength += messageLength;
 
     // Stop processing here if another APDU is expected
     if (p2 & P2_MORE) {
@@ -185,18 +186,18 @@ void handle_sign_message_receive_apdus(uint8_t p1,
     }
 
     if (p1 == P1_NON_CONFIRM) {
-        G_non_confirm_requested = true;
+        G_ctx.non_confirm_requested = true;
     }
 
     // Host has signaled that the message is complete. We won't be receiving
     // any more extending APDU buffers. Clear the derivation path count so we
     // can detect P2_EXTEND misuse at the start of the next exchange
-    G_numDerivationPaths = 0;
+    G_ctx.numDerivationPaths = 0;
 }
 
 static int scan_header_for_signer(size_t *signer_index, const MessageHeader *header) {
-    uint8_t signer_pubkey[32];
-    get_public_key(signer_pubkey, G_derivationPath, G_derivationPathLength);
+    uint8_t signer_pubkey[PUBKEY_LENGTH];
+    get_public_key(signer_pubkey, G_ctx.derivationPath, G_ctx.derivationPathLength);
     for (size_t i = 0; i < header->pubkeys_header.num_required_signatures; ++i) {
         const Pubkey *current_pubkey = &(header->pubkeys[i]);
         if (memcmp(current_pubkey, signer_pubkey, PUBKEY_SIZE) == 0) {
@@ -208,7 +209,7 @@ static int scan_header_for_signer(size_t *signer_index, const MessageHeader *hea
 }
 
 void handle_sign_message_parse_message(volatile unsigned int *tx) {
-    Parser parser = {G_message, G_messageLength};
+    Parser parser = {G_ctx.message, G_ctx.messageLength};
     PrintConfig print_config;
     print_config.expert_mode = (N_storage.settings.display_mode == DisplayModeExpert);
     print_config.signer_pubkey = NULL;
@@ -226,9 +227,9 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
     }
     print_config.signer_pubkey = &header->pubkeys[signer_index];
 
-    if (G_non_confirm_requested) {
-        // Uncomment this to allow blind signing.
-        //*tx = set_result_sign_message();
+    if (G_ctx.non_confirm_requested) {
+        // Uncomment this to allow blind signing without other checks.
+        // *tx = set_result_sign_message();
         // THROW(ApduReplySuccess);
         UNUSED(tx);
 
@@ -242,9 +243,10 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
         if (N_storage.settings.allow_blind_sign == BlindSignEnabled) {
             SummaryItem *item = transaction_summary_primary_item();
             summary_item_set_string(item, "Unrecognized", "format");
+            Hash UnrecognizedMessageHash;
 
-            cx_hash_sha256(G_message,
-                           G_messageLength,
+            cx_hash_sha256(G_ctx.message,
+                           G_ctx.messageLength,
                            (uint8_t *) &UnrecognizedMessageHash,
                            HASH_LENGTH);
 

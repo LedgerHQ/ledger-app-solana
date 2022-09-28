@@ -4,8 +4,10 @@
 #include "utils.h"
 #include "sol/printer.h"
 
-static uint8_t publicKey[PUBKEY_LENGTH];
-static char publicKeyStr[BASE58_PUBKEY_LENGTH];
+typedef struct public_key_ctx_s {
+    uint8_t public_key[PUBKEY_LENGTH];
+    char public_key_str[BASE58_PUBKEY_LENGTH];
+} public_key_ctx_t;
 
 size_t read_derivation_path(const uint8_t *dataBuffer, size_t size, uint32_t *derivationPath) {
     if (size == 0) {
@@ -28,10 +30,15 @@ size_t read_derivation_path(const uint8_t *dataBuffer, size_t size, uint32_t *de
     return len;
 }
 
-static uint8_t set_result_get_pubkey() {
-    uint8_t tx = 32;
+static public_key_ctx_t G_ctx;
 
-    memcpy(G_io_apdu_buffer, publicKey, 32);
+void reset_get_public_key_context(void) {
+    MEMCLEAR(G_ctx);
+}
+
+static uint8_t set_result_get_pubkey() {
+    uint8_t tx = PUBKEY_LENGTH;
+    memcpy(G_io_apdu_buffer, G_ctx.public_key, PUBKEY_LENGTH);
     return tx;
 }
 
@@ -41,7 +48,7 @@ UX_STEP_NOCB(ux_display_public_flow_5_step,
              bnnn_paging,
              {
                  .title = "Pubkey",
-                 .text = publicKeyStr,
+                 .text = G_ctx.public_key_str,
              });
 UX_STEP_VALID(ux_display_public_flow_6_step,
               pb,
@@ -74,8 +81,8 @@ void handleGetPubkey(uint8_t p1,
     uint32_t derivationPath[BIP32_PATH];
     uint32_t pathLength = read_derivation_path(dataBuffer, dataLength, derivationPath);
 
-    get_public_key(publicKey, derivationPath, pathLength);
-    encode_base58(publicKey, PUBKEY_LENGTH, publicKeyStr, BASE58_PUBKEY_LENGTH);
+    get_public_key(G_ctx.public_key, derivationPath, pathLength);
+    encode_base58(G_ctx.public_key, PUBKEY_LENGTH, G_ctx.public_key_str, BASE58_PUBKEY_LENGTH);
 
     if (p1 == P1_NON_CONFIRM) {
         *tx = set_result_get_pubkey();

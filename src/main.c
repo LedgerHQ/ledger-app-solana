@@ -23,6 +23,11 @@
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
+static void reset_sub_contexts(void) {
+    reset_sign_message_context();
+    reset_get_public_key_context();
+}
+
 #define CLA 0xE0
 
 // DEPRECATED - Use non "16" suffixed variants below
@@ -151,7 +156,7 @@ void app_main(void) {
 
     // Initialize derivation path count so we can accurately track the message
     // buffer handling state
-    G_numDerivationPaths = 0;
+    reset_sub_contexts();
 
     // DESIGN NOTE: the bootloader ignores the way APDU are fetched. The only
     // goal is to retrieve APDU.
