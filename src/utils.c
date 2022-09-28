@@ -37,11 +37,11 @@ void get_public_key(uint8_t publicKeyArray[PUBKEY_LENGTH],
     cx_ecfp_generate_pair(CX_CURVE_Ed25519, &publicKey, &privateKey, 1);
     explicit_bzero(&privateKey, sizeof(privateKey));
 
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < PUBKEY_LENGTH; i++) {
         publicKeyArray[i] = publicKey.W[64 - i];
     }
-    if ((publicKey.W[32] & 1) != 0) {
-        publicKeyArray[31] |= 0x80;
+    if ((publicKey.W[PUBKEY_LENGTH] & 1) != 0) {
+        publicKeyArray[PUBKEY_LENGTH - 1] |= 0x80;
     }
 }
 
