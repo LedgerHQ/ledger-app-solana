@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-// Disable clang format for this file to keep clear buffer formating
+// Disable clang format for this file to keep clear buffer formatting
 /* clang-format off */
 
 void test_process_message_body_ok() {
