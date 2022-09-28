@@ -43,21 +43,26 @@ static uint8_t set_result_sign_message() {
     return SIGNATURE_LENGTH;
 }
 
+static void send_result_sign_message(void) {
+    sendResponse(set_result_sign_message(), true);
+}
+
 //////////////////////////////////////////////////////////////////////
-UX_STEP_VALID(ux_approve_step,
-              pb,
-              sendResponse(set_result_sign_message(), true),
-              {
-                  &C_icon_validate_14,
-                  "Approve",
-              });
-UX_STEP_VALID(ux_reject_step,
-              pb,
-              sendResponse(0, false),
-              {
-                  &C_icon_crossmark,
-                  "Reject",
-              });
+
+UX_STEP_CB(ux_approve_step,
+           pb,
+           send_result_sign_message(),
+           {
+               &C_icon_validate_14,
+               "Approve",
+           });
+UX_STEP_CB(ux_reject_step,
+           pb,
+           sendResponse(0, false),
+           {
+               &C_icon_crossmark,
+               "Reject",
+           });
 UX_STEP_NOCB_INIT(ux_summary_step,
                   bnnn_paging,
                   {

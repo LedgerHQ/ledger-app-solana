@@ -115,20 +115,20 @@ UX_STEP_NOCB(ux_sign_msg_text_step,
                  .title = "Message",
                  .text = (const char *) G_command.message + OFFCHAIN_MESSAGE_HEADER_LENGTH,
              });
-UX_STEP_VALID(ux_sign_msg_approve_step,
-              pb,
-              sendResponse(set_result_sign_message(), true),
-              {
-                  &C_icon_validate_14,
-                  "Approve",
-              });
-UX_STEP_VALID(ux_sign_msg_reject_step,
-              pb,
-              sendResponse(0, false),
-              {
-                  &C_icon_crossmark,
-                  "Reject",
-              });
+UX_STEP_CB(ux_sign_msg_approve_step,
+           pb,
+           sendResponse(set_result_sign_message(), true),
+           {
+               &C_icon_validate_14,
+               "Approve",
+           });
+UX_STEP_CB(ux_sign_msg_reject_step,
+           pb,
+           sendResponse(0, false),
+           {
+               &C_icon_crossmark,
+               "Reject",
+           });
 UX_STEP_NOCB_INIT(ux_sign_msg_summary_step,
                   bnnn_paging,
                   {
