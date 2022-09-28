@@ -20,7 +20,11 @@ typedef enum rlpTxType {
 
 unsigned int ui_prepro(const bagl_element_t *element);
 
-void get_public_key(uint8_t *publicKeyArray, const uint32_t *derivationPath, size_t pathLength);
+size_t read_derivation_path(const uint8_t *dataBuffer, size_t size, uint32_t *derivationPath);
+
+void get_public_key(uint8_t publicKeyArray[PUBKEY_LENGTH],
+                    const uint32_t *derivationPath,
+                    size_t pathLength);
 
 uint32_t readUint32BE(uint8_t *buffer);
 
