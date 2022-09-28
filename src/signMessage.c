@@ -165,7 +165,7 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
 
 void handle_sign_message_ui(volatile unsigned int *flags) {
     // Display the transaction summary
-    enum SummaryItemKind summary_step_kinds[MAX_TRANSACTION_SUMMARY_ITEMS];
+    SummaryItemKind_t summary_step_kinds[MAX_TRANSACTION_SUMMARY_ITEMS];
     size_t num_summary_steps = 0;
     if (transaction_summary_finalize(summary_step_kinds, &num_summary_steps) == 0) {
         size_t num_flow_steps = 0;
