@@ -52,6 +52,8 @@ typedef enum InstructionCode {
     InsSignOffchainMessage = 0x07
 } InstructionCode;
 
+extern bool G_called_from_swap;
+
 // display stepped screens
 extern unsigned int ux_step;
 extern unsigned int ux_step_count;

@@ -12,6 +12,8 @@
 #include "globals.h"
 #include "apdu.h"
 
+#include "handle_swap_sign_transaction.h"
+
 static uint8_t set_result_sign_message() {
     uint8_t signature[SIGNATURE_LENGTH];
     cx_ecfp_private_key_t privateKey;
@@ -137,6 +139,12 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
         //*tx = set_result_sign_message();
         // THROW(ApduReplySuccess);
         UNUSED(tx);
+    }
+
+    if ((G_command.non_confirm || G_called_from_swap) &&
+        !(G_command.non_confirm && G_called_from_swap)) {
+        // Blind sign requested NOT in swap context
+        // Or no blind sign requested while in swap context
         THROW(ApduReplySdkNotSupported);
     }
 
@@ -167,22 +175,76 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
     }
 }
 
+static bool check_swap_validity(const SummaryItemKind_t kinds[MAX_TRANSACTION_SUMMARY_ITEMS],
+                                size_t num_summary_steps) {
+    bool amount_ok = false;
+    bool recipient_ok = false;
+    bool fee_payer_ok = false;
+    if (num_summary_steps != 3) {
+        PRINTF("3 steps expected for transaction in swap context, not %u\n", num_summary_steps);
+        return false;
+    }
+    for (size_t i = 0; i < num_summary_steps; ++i) {
+        transaction_summary_display_item(i, DisplayFlagNone | DisplayFlagLongPubkeys);
+        PRINTF("G_transaction_summary_title = %s\n", G_transaction_summary_title);
+        PRINTF("G_transaction_summary_text = %s\n", G_transaction_summary_text);
+        switch (kinds[i]) {
+            case SummaryItemAmount:
+                if (strcmp(G_transaction_summary_title, "Transfer") == 0) {
+                    amount_ok = check_swap_amount(G_transaction_summary_text);
+                } else {
+                    PRINTF("Refused field '%s'\n", G_transaction_summary_title);
+                    return false;
+                }
+                break;
+            case SummaryItemPubkey:
+                if (strcmp(G_transaction_summary_title, "Recipient") == 0) {
+                    recipient_ok = check_swap_recipient(G_transaction_summary_text);
+                } else if (strcmp(G_transaction_summary_title, "Fee payer") == 0) {
+                    fee_payer_ok = check_swap_fee_payer(G_transaction_summary_text);
+                } else {
+                    PRINTF("Refused field '%s'\n", G_transaction_summary_title);
+                    return false;
+                }
+                break;
+            default:
+                PRINTF("Refused kind '%u'\n", SummaryItemAmount);
+                return false;
+        }
+    }
+    return amount_ok && recipient_ok && fee_payer_ok;
+}
+
 void handle_sign_message_ui(volatile unsigned int *flags) {
     // Display the transaction summary
     SummaryItemKind_t summary_step_kinds[MAX_TRANSACTION_SUMMARY_ITEMS];
     size_t num_summary_steps = 0;
     if (transaction_summary_finalize(summary_step_kinds, &num_summary_steps) == 0) {
-        size_t num_flow_steps = 0;
+        // If we are in swap context, do not redisplay the message data
+        // Instead, ensure they are identitical with what was previously displayed
+        if (G_called_from_swap) {
+            if (check_swap_validity(summary_step_kinds, num_summary_steps)) {
+                send_result_sign_message();
+                // Quit app, we are in limited mode and our work is done
+                os_sched_exit(0);
+            } else {
+                PRINTF("Refused blind signing incorrect Swap transaction\n");
+                sendResponse(0, false);
+            }
+        } else {
+            MEMCLEAR(flow_steps);
+            size_t num_flow_steps = 0;
 
-        for (size_t i = 0; i < num_summary_steps; i++) {
-            flow_steps[num_flow_steps++] = &ux_summary_step;
+            for (size_t i = 0; i < num_summary_steps; i++) {
+                flow_steps[num_flow_steps++] = &ux_summary_step;
+            }
+
+            flow_steps[num_flow_steps++] = &ux_approve_step;
+            flow_steps[num_flow_steps++] = &ux_reject_step;
+            flow_steps[num_flow_steps++] = FLOW_END_STEP;
+
+            ux_flow_init(0, flow_steps, NULL);
         }
-
-        flow_steps[num_flow_steps++] = &ux_approve_step;
-        flow_steps[num_flow_steps++] = &ux_reject_step;
-        flow_steps[num_flow_steps++] = FLOW_END_STEP;
-
-        ux_flow_init(0, flow_steps, NULL);
     } else {
         THROW(ApduReplySolanaSummaryFinalizeFailed);
     }
