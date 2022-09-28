@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "menu.h"
 #include "globals.h"
+#include "sol/printer.h"
 
 size_t read_derivation_path(const uint8_t *dataBuffer, size_t size, uint32_t *derivationPath) {
     if (size == 0) {
@@ -43,6 +44,18 @@ void get_public_key(uint8_t publicKeyArray[PUBKEY_LENGTH],
     if ((publicKey.W[PUBKEY_LENGTH] & 1) != 0) {
         publicKeyArray[PUBKEY_LENGTH - 1] |= 0x80;
     }
+}
+
+int derive_public_key(const uint8_t *buffer,
+                      uint16_t buffer_length,
+                      uint8_t public_key[PUBKEY_LENGTH],
+                      char public_key_str[BASE58_PUBKEY_LENGTH]) {
+    uint32_t derivation_path[BIP32_PATH];
+    uint32_t path_length = read_derivation_path(buffer, buffer_length, derivation_path);
+
+    get_public_key(public_key, derivation_path, path_length);
+
+    return encode_base58(public_key, PUBKEY_LENGTH, public_key_str, BASE58_PUBKEY_LENGTH);
 }
 
 uint32_t readUint32BE(uint8_t *buffer) {

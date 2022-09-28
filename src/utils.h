@@ -2,6 +2,7 @@
 #include "cx.h"
 #include "globals.h"
 #include <string.h>
+#include "sol/printer.h"
 
 #ifndef _UTILS_H_
 #define _UTILS_H_
@@ -25,6 +26,11 @@ size_t read_derivation_path(const uint8_t *dataBuffer, size_t size, uint32_t *de
 void get_public_key(uint8_t publicKeyArray[PUBKEY_LENGTH],
                     const uint32_t *derivationPath,
                     size_t pathLength);
+
+int derive_public_key(const uint8_t *buffer,
+                      uint16_t buffer_length,
+                      uint8_t public_key[PUBKEY_LENGTH],
+                      char public_key_str[BASE58_PUBKEY_LENGTH]);
 
 uint32_t readUint32BE(uint8_t *buffer);
 

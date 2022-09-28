@@ -51,17 +51,15 @@ UX_FLOW(ux_display_public_flow,
 
 void handleGetPubkey(uint8_t p1,
                      uint8_t p2,
-                     uint8_t *dataBuffer,
+                     const uint8_t *dataBuffer,
                      uint16_t dataLength,
                      volatile unsigned int *flags,
                      volatile unsigned int *tx) {
     UNUSED(p2);
 
-    uint32_t derivationPath[BIP32_PATH];
-    uint32_t pathLength = read_derivation_path(dataBuffer, dataLength, derivationPath);
-
-    get_public_key(G_ctx.public_key, derivationPath, pathLength);
-    encode_base58(G_ctx.public_key, PUBKEY_LENGTH, G_ctx.public_key_str, BASE58_PUBKEY_LENGTH);
+    if (derive_public_key(dataBuffer, dataLength, G_ctx.public_key, G_ctx.public_key_str) != 0) {
+        sendResponse(0, false);
+    }
 
     if (p1 == P1_NON_CONFIRM) {
         *tx = set_result_get_pubkey();
