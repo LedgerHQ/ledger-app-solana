@@ -6,6 +6,9 @@
 #include <assert.h>
 #include <stdio.h>
 
+// Disable clang format for this file to keep clear buffer formating
+/* clang-format off */
+
 void test_process_message_body_ok() {
     Pubkey accounts[] = {
         {{171, 88, 202, 32, 185, 160, 182, 116, 130, 185, 73, 48, 13, 216, 170, 71, 172, 195, 165, 123, 87, 70, 130, 219, 5, 157, 240, 187, 26, 191, 158, 218}},
@@ -1857,6 +1860,8 @@ void test_process_message_body_spl_associated_token_create_with_transfer_and_ass
     };
     process_message_body_and_sanity_check(message, sizeof(message), 9);
 }
+
+/* clang-format on */
 
 int main() {
     test_process_message_body_spl_associated_token_create_with_transfer_and_assert_owner();

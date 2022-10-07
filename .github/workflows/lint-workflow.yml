@@ -18,10 +18,17 @@ jobs:
       - name: Clone
         uses: actions/checkout@v2
 
-      - name: Lint
+      - name: Lint src
         uses: DoozyX/clang-format-lint-action@v0.13
         with:
           source: './src'
+          extensions: 'h,c'
+          clangFormatVersion: 12.0.0
+
+      - name: Lint libsol
+        uses: DoozyX/clang-format-lint-action@v0.13
+        with:
+          source: './libsol'
           extensions: 'h,c'
           clangFormatVersion: 12.0.0
 
