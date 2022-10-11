@@ -25,6 +25,11 @@
 ApduCommand G_command;
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
+static void reset_main_globals(void) {
+    MEMCLEAR(G_command);
+    MEMCLEAR(G_io_seproxyhal_spi_buffer);
+}
+
 void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx, int rx) {
     if (!flags || !tx) {
         THROW(ApduReplySdkInvalidParameter);
@@ -80,7 +85,8 @@ void app_main(void) {
 
     // Stores the information about the current command. Some commands expect
     // multiple APDUs before they become complete and executed.
-    explicit_bzero(&G_command, sizeof(ApduCommand));
+    reset_getpubkey_globals();
+    reset_main_globals();
 
     // DESIGN NOTE: the bootloader ignores the way APDU are fetched. The only
     // goal is to retrieve APDU.
