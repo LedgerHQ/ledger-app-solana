@@ -41,7 +41,7 @@ static void get_private_key(cx_ecfp_private_key_t *privateKey,
 
 static void get_private_key_with_seed(cx_ecfp_private_key_t *privateKey,
                                const uint32_t *derivationPath,
-                               uint8_t pathLength) {
+                               size_t pathLength) {
     uint8_t privateKeyData[PRIVATEKEY_LENGTH];
     BEGIN_TRY {
         TRY {
@@ -97,7 +97,7 @@ void get_public_key(uint8_t *publicKeyArray, const uint32_t *derivationPath, siz
 int read_derivation_path(const uint8_t *data_buffer,
                          size_t data_size,
                          uint32_t *derivation_path,
-                         uint32_t *derivation_path_length) {
+                         size_t *derivation_path_length) {
     if (!data_buffer || !derivation_path || !derivation_path_length) {
         return ApduReplySdkInvalidParameter;
     }

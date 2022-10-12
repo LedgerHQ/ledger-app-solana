@@ -45,7 +45,7 @@ uint8_t set_result_sign_message(void);
 int read_derivation_path(const uint8_t *data_buffer,
                          size_t data_size,
                          uint32_t *derivation_path,
-                         uint32_t *derivation_path_length);
+                         size_t *derivation_path_length);
 
 void sendResponse(uint8_t tx, bool approve);
 
