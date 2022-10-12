@@ -30,7 +30,7 @@
 
 ApduCommand G_command;
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
-bool G_called_from_swap;
+volatile bool G_called_from_swap;
 
 static void reset_main_globals(void) {
     MEMCLEAR(G_command);
@@ -126,6 +126,7 @@ void app_main(void) {
                 THROW(ApduReplySdkExceptionIoReset);
             }
             CATCH_OTHER(e) {
+                G_called_from_swap = false;
                 switch (e & 0xF000) {
                     case 0x6000:
                         sw = e;
@@ -148,8 +149,6 @@ void app_main(void) {
                 tx += 2;
             }
             FINALLY {
-                // Restrict silent swap mode to the first APDU received
-                G_called_from_swap = false;
             }
         }
         END_TRY;
@@ -354,7 +353,7 @@ static void library_main_helper(libargs_t *args) {
 }
 
 static void library_main(libargs_t *args) {
-    bool end = false;
+    volatile bool end = false;
     /* This loop ensures that library_main_helper and os_lib_end are called
      * within a try context, even if an exception is thrown */
     while (1) {
