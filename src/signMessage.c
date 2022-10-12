@@ -14,7 +14,6 @@
 
 #include "handle_swap_sign_transaction.h"
 
-
 static void send_result_sign_message(void) {
     sendResponse(set_result_sign_message(), true);
 }

@@ -5,14 +5,13 @@
 #include "utils.h"
 #include "menu.h"
 
-
 uint32_t readUint32BE(uint8_t *buffer) {
     return ((buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | (buffer[3]));
 }
 
 static void get_private_key(cx_ecfp_private_key_t *privateKey,
-                     const uint32_t *derivationPath,
-                     size_t pathLength) {
+                            const uint32_t *derivationPath,
+                            size_t pathLength) {
     uint8_t privateKeyData[PRIVATEKEY_LENGTH];
     BEGIN_TRY {
         TRY {
@@ -40,8 +39,8 @@ static void get_private_key(cx_ecfp_private_key_t *privateKey,
 }
 
 static void get_private_key_with_seed(cx_ecfp_private_key_t *privateKey,
-                               const uint32_t *derivationPath,
-                               size_t pathLength) {
+                                      const uint32_t *derivationPath,
+                                      size_t pathLength) {
     uint8_t privateKeyData[PRIVATEKEY_LENGTH];
     BEGIN_TRY {
         TRY {

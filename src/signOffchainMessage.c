@@ -76,7 +76,6 @@ static bool is_data_ascii(const uint8_t *data, size_t length) {
     return true;
 }
 
-
 //////////////////////////////////////////////////////////////////////
 
 UX_STEP_NOCB(ux_sign_msg_text_step,
