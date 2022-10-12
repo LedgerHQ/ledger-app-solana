@@ -5,37 +5,12 @@
 #include "utils.h"
 #include "menu.h"
 
-void get_public_key(uint8_t *publicKeyArray, const uint32_t *derivationPath, size_t pathLength) {
-    cx_ecfp_private_key_t privateKey;
-    cx_ecfp_public_key_t publicKey;
-
-    get_private_key(&privateKey, derivationPath, pathLength);
-    BEGIN_TRY {
-        TRY {
-            cx_ecfp_generate_pair(CX_CURVE_Ed25519, &publicKey, &privateKey, 1);
-        }
-        CATCH_OTHER(e) {
-            THROW(e);
-        }
-        FINALLY {
-            MEMCLEAR(privateKey);
-        }
-    }
-    END_TRY;
-
-    for (int i = 0; i < PUBKEY_LENGTH; i++) {
-        publicKeyArray[i] = publicKey.W[PUBKEY_LENGTH + PRIVATEKEY_LENGTH - i];
-    }
-    if ((publicKey.W[PUBKEY_LENGTH] & 1) != 0) {
-        publicKeyArray[PUBKEY_LENGTH - 1] |= 0x80;
-    }
-}
 
 uint32_t readUint32BE(uint8_t *buffer) {
     return ((buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | (buffer[3]));
 }
 
-void get_private_key(cx_ecfp_private_key_t *privateKey,
+static void get_private_key(cx_ecfp_private_key_t *privateKey,
                      const uint32_t *derivationPath,
                      size_t pathLength) {
     uint8_t privateKeyData[PRIVATEKEY_LENGTH];
@@ -64,7 +39,7 @@ void get_private_key(cx_ecfp_private_key_t *privateKey,
     END_TRY;
 }
 
-void get_private_key_with_seed(cx_ecfp_private_key_t *privateKey,
+static void get_private_key_with_seed(cx_ecfp_private_key_t *privateKey,
                                const uint32_t *derivationPath,
                                uint8_t pathLength) {
     uint8_t privateKeyData[PRIVATEKEY_LENGTH];
@@ -91,6 +66,32 @@ void get_private_key_with_seed(cx_ecfp_private_key_t *privateKey,
         }
     }
     END_TRY;
+}
+
+void get_public_key(uint8_t *publicKeyArray, const uint32_t *derivationPath, size_t pathLength) {
+    cx_ecfp_private_key_t privateKey;
+    cx_ecfp_public_key_t publicKey;
+
+    get_private_key(&privateKey, derivationPath, pathLength);
+    BEGIN_TRY {
+        TRY {
+            cx_ecfp_generate_pair(CX_CURVE_Ed25519, &publicKey, &privateKey, 1);
+        }
+        CATCH_OTHER(e) {
+            THROW(e);
+        }
+        FINALLY {
+            MEMCLEAR(privateKey);
+        }
+    }
+    END_TRY;
+
+    for (int i = 0; i < PUBKEY_LENGTH; i++) {
+        publicKeyArray[i] = publicKey.W[PUBKEY_LENGTH + PRIVATEKEY_LENGTH - i];
+    }
+    if ((publicKey.W[PUBKEY_LENGTH] & 1) != 0) {
+        publicKeyArray[PUBKEY_LENGTH - 1] |= 0x80;
+    }
 }
 
 int read_derivation_path(const uint8_t *data_buffer,
@@ -130,6 +131,37 @@ void sendResponse(uint8_t tx, bool approve) {
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
     // Display back the original UX
     ui_idle();
+}
+
+uint8_t set_result_sign_message(void) {
+    uint8_t signature[SIGNATURE_LENGTH];
+    cx_ecfp_private_key_t privateKey;
+    BEGIN_TRY {
+        TRY {
+            get_private_key_with_seed(&privateKey,
+                                      G_command.derivation_path,
+                                      G_command.derivation_path_length);
+            cx_eddsa_sign(&privateKey,
+                          CX_LAST,
+                          CX_SHA512,
+                          G_command.message,
+                          G_command.message_length,
+                          NULL,
+                          0,
+                          signature,
+                          SIGNATURE_LENGTH,
+                          NULL);
+            memcpy(G_io_apdu_buffer, signature, SIGNATURE_LENGTH);
+        }
+        CATCH_OTHER(e) {
+            THROW(e);
+        }
+        FINALLY {
+            MEMCLEAR(privateKey);
+        }
+    }
+    END_TRY;
+    return SIGNATURE_LENGTH;
 }
 
 unsigned int ui_prepro(const bagl_element_t *element) {
