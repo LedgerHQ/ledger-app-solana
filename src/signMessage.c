@@ -230,7 +230,7 @@ void handle_sign_message_ui(volatile unsigned int *flags) {
                 os_sched_exit(0);
             } else {
                 PRINTF("Refused blind signing incorrect Swap transaction\n");
-                sendResponse(0, false);
+                THROW(ApduReplySolanaSummaryFinalizeFailed);
             }
         } else {
             MEMCLEAR(flow_steps);
