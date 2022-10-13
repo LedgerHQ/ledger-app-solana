@@ -143,8 +143,8 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
 
     if ((G_command.non_confirm || G_called_from_swap) &&
         !(G_command.non_confirm && G_called_from_swap)) {
-        // Blind sign requested NOT in swap context
-        // Or no blind sign requested while in swap context
+        // User validation bypass requested NOT in swap context
+        // Or user validation requested while in swap context
         THROW(ApduReplySdkNotSupported);
     }
 

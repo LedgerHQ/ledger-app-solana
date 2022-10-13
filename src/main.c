@@ -48,8 +48,10 @@ void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx, int rx)
 
     const int ret = apdu_handle_message(G_io_apdu_buffer, rx, &G_command);
     if (ret != 0) {
+        MEMCLEAR(G_command);
         THROW(ret);
     }
+
     if (G_command.state == ApduStatePayloadInProgress) {
         THROW(ApduReplySuccess);
     }
