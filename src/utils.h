@@ -25,13 +25,7 @@ void get_public_key(uint8_t *publicKeyArray, const uint32_t *derivationPath, siz
 
 uint32_t readUint32BE(uint8_t *buffer);
 
-void get_private_key(cx_ecfp_private_key_t *privateKey,
-                     const uint32_t *derivationPath,
-                     size_t pathLength);
-
-void get_private_key_with_seed(cx_ecfp_private_key_t *privateKey,
-                               const uint32_t *derivationPath,
-                               uint8_t pathLength);
+uint8_t set_result_sign_message(void);
 
 /**
  * Deserialize derivation path from raw bytes.
@@ -51,7 +45,7 @@ void get_private_key_with_seed(cx_ecfp_private_key_t *privateKey,
 int read_derivation_path(const uint8_t *data_buffer,
                          size_t data_size,
                          uint32_t *derivation_path,
-                         uint32_t *derivation_path_length);
+                         size_t *derivation_path_length);
 
 void sendResponse(uint8_t tx, bool approve);
 

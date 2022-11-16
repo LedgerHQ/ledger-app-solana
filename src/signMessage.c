@@ -14,37 +14,6 @@
 
 #include "handle_swap_sign_transaction.h"
 
-static uint8_t set_result_sign_message() {
-    uint8_t signature[SIGNATURE_LENGTH];
-    cx_ecfp_private_key_t privateKey;
-    BEGIN_TRY {
-        TRY {
-            get_private_key_with_seed(&privateKey,
-                                      G_command.derivation_path,
-                                      G_command.derivation_path_length);
-            cx_eddsa_sign(&privateKey,
-                          CX_LAST,
-                          CX_SHA512,
-                          G_command.message,
-                          G_command.message_length,
-                          NULL,
-                          0,
-                          signature,
-                          SIGNATURE_LENGTH,
-                          NULL);
-            memcpy(G_io_apdu_buffer, signature, SIGNATURE_LENGTH);
-        }
-        CATCH_OTHER(e) {
-            THROW(e);
-        }
-        FINALLY {
-            MEMCLEAR(privateKey);
-        }
-    }
-    END_TRY;
-    return SIGNATURE_LENGTH;
-}
-
 static void send_result_sign_message(void) {
     sendResponse(set_result_sign_message(), true);
 }

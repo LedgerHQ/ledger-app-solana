@@ -1,6 +1,6 @@
 # Solana application : Common Technical Specifications
 
-## 1.3.0
+## 1.4.0
 
 - Add SIGN SOLANA OFF-CHAIN MESSAGE
 - Add compatibility with the Exchange Application to SWAP, FUND, or SELL SOL tokens

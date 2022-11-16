@@ -5,6 +5,8 @@
     "\xff"                              \
     "solana offchain"
 
+#define OFFCHAIN_MESSAGE_SIGNING_DOMAIN_LEN (sizeof(OFFCHAIN_MESSAGE_SIGNING_DOMAIN) - 1)
+
 static int check_buffer_length(Parser* parser, size_t num) {
     return parser->buffer_length < num ? 1 : 0;
 }
@@ -130,13 +132,14 @@ int parse_message_header(Parser* parser, MessageHeader* header) {
 }
 
 int parse_offchain_message_header(Parser* parser, OffchainMessageHeader* header) {
-    const size_t domain_len = strlen(OFFCHAIN_MESSAGE_SIGNING_DOMAIN);
-    BAIL_IF(check_buffer_length(parser, domain_len));
+    BAIL_IF(check_buffer_length(parser, OFFCHAIN_MESSAGE_SIGNING_DOMAIN_LEN));
     int res;
-    if ((res = memcmp(OFFCHAIN_MESSAGE_SIGNING_DOMAIN, parser->buffer, domain_len)) != 0) {
+    if ((res = memcmp(OFFCHAIN_MESSAGE_SIGNING_DOMAIN,
+                      parser->buffer,
+                      OFFCHAIN_MESSAGE_SIGNING_DOMAIN_LEN)) != 0) {
         return res;
     }
-    advance(parser, domain_len);
+    advance(parser, OFFCHAIN_MESSAGE_SIGNING_DOMAIN_LEN);
 
     BAIL_IF(parse_u8(parser, &header->version));
     BAIL_IF(parse_u8(parser, &header->format));
