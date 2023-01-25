@@ -1,3 +1,2 @@
 base58
-bip32
 ragger[tests,speculos]

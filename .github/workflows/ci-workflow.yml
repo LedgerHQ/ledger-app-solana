@@ -79,7 +79,7 @@ jobs:
         run: |
           pip install --extra-index-url https://test.pypi.org/simple/ -r tests/python/requirements.txt
       - name: Run tests
-        run: pytest tests/python/ -v
+        run: pytest tests/python/ -v --tb=short --device all
 
   job_C_test:
     name: C tests

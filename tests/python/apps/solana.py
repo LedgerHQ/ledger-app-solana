@@ -2,9 +2,8 @@ from typing import List, Generator
 from enum import IntEnum
 from contextlib import contextmanager
 
-from ragger.backend.interface import BackendInterface, RAPDU
-
-from ..utils import validate_displayed_message
+from ragger.backend import BackendInterface
+from ragger.utils import RAPDU
 
 
 class INS(IntEnum):
@@ -123,14 +122,6 @@ class SolanaClient:
                                          final_p2,
                                          message_splited_prefixed[-1]):
             yield
-
-
-    def validate_sign_message(self):
-        validate_displayed_message(self._client, 3)
-
-
-    def refuse_to_sign_message(self):
-        validate_displayed_message(self._client, 3 + 1)
 
 
     def get_async_response(self) -> RAPDU:
