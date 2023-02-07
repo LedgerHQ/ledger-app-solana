@@ -46,7 +46,7 @@ void test_parse_stake_initialize_instruction() {
     };
     memcpy(&pubkeys[2], &stake_program_id, PUBKEY_SIZE);
     Blockhash blockhash = {{BYTES32_BS58_6}};
-    MessageHeader header = {{1, 0, 1, ARRAY_LEN(pubkeys)}, pubkeys, &blockhash, 1};
+    MessageHeader header = {false, 0, {1, 0, 1, ARRAY_LEN(pubkeys)}, pubkeys, &blockhash, 1};
     uint8_t accounts[] = {0, 1};
     uint8_t ix_data[] = {/* kind */
                          0x00,

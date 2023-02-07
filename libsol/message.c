@@ -99,6 +99,12 @@ int process_message_body(const uint8_t* message_body,
         }
     }
 
+    if (header->versioned) {
+        size_t account_tables_length;
+        BAIL_IF(parse_length(&parser, &account_tables_length));
+        BAIL_IF(account_tables_length > 0);
+    }
+
     // Ensure we've consumed the entire message body
     BAIL_IF(!parser_is_empty(&parser));
 

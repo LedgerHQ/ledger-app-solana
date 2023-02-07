@@ -51,6 +51,8 @@ typedef struct PubkeysHeader {
 } PubkeysHeader;
 
 typedef struct MessageHeader {
+    bool versioned;
+    uint8_t version;
     PubkeysHeader pubkeys_header;
     const Pubkey* pubkeys;
     const Blockhash* blockhash;

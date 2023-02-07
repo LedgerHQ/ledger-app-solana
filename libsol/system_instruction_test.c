@@ -127,6 +127,8 @@ void test_system_create_account_with_seed_instruction() {
     memcpy(&pubkeys[2], &system_program_id, PUBKEY_SIZE);
     Blockhash blockhash = {{BYTES32_BS58_5}};
     MessageHeader header = {
+        false,
+        0,
         {2, 0, 0, ARRAY_LEN(pubkeys)},
         pubkeys,
         &blockhash,

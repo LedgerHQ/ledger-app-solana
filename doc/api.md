@@ -1,5 +1,9 @@
 # Solana application : Common Technical Specifications
 
+## 1.3.1
+
+- Add support for versioned messages
+
 ## 1.3.0
 
 - Add SIGN SOLANA OFF-CHAIN MESSAGE

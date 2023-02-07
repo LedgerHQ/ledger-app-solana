@@ -6,9 +6,11 @@ use solana_remote_wallet::{
     remote_wallet::{initialize_wallet_manager, RemoteWallet, RemoteWalletError},
 };
 use solana_sdk::{
+    address_lookup_table_account::AddressLookupTableAccount,
     derivation_path::DerivationPath,
+    hash::Hash,
     instruction::{AccountMeta, Instruction},
-    message::Message,
+    message::{v0::Message as MessageV0, Message},
     pubkey::Pubkey,
     stake::{
         instruction as stake_instruction, program as solana_stake_program, state as stake_state,
@@ -82,6 +84,69 @@ fn test_ledger_sign_transaction() -> Result<(), RemoteWalletError> {
     let recipients: Vec<(Pubkey, u64)> = (0..10).map(|_| (Pubkey::new_unique(), 42)).collect();
     let instructions = system_instruction::transfer_many(&from, &recipients);
     let message = Message::new(&instructions, Some(&ledger_base_pubkey)).serialize();
+    let hash = solana_sdk::hash::hash(&message);
+    println!("Expected hash: {}", hash);
+    let signature = ledger.sign_message(&derivation_path, &message)?;
+    assert!(signature.verify(from.as_ref(), &message));
+    Ok(())
+}
+
+// This test requires interactive approval of message signing on the ledger.
+fn test_ledger_sign_versioned_transaction() -> Result<(), RemoteWalletError> {
+    let (ledger, ledger_base_pubkey) = get_ledger();
+
+    let derivation_path = DerivationPath::new_bip44(Some(12345), None);
+
+    let from = ledger.get_pubkey(&derivation_path, false)?;
+    let instruction = system_instruction::transfer(&from, &ledger_base_pubkey, 42);
+    let message = MessageV0::try_compile(&ledger_base_pubkey, &[instruction], &[], Hash::default())
+        .unwrap()
+        .serialize();
+    let signature = ledger.sign_message(&derivation_path, &message)?;
+    assert!(signature.verify(from.as_ref(), &message));
+
+    // Test large transaction
+    let recipients: Vec<(Pubkey, u64)> = (0..10).map(|_| (Pubkey::new_unique(), 42)).collect();
+    let instructions = system_instruction::transfer_many(&from, &recipients);
+    let message = MessageV0::try_compile(&ledger_base_pubkey, &instructions, &[], Hash::default())
+        .unwrap()
+        .serialize();
+    let hash = solana_sdk::hash::hash(&message);
+    println!("Expected hash: {}", hash);
+    let signature = ledger.sign_message(&derivation_path, &message)?;
+    assert!(signature.verify(from.as_ref(), &message));
+    Ok(())
+}
+
+// This test requires interactive approval of message signing on the ledger.
+fn test_ledger_sign_versioned_transaction_with_table() -> Result<(), RemoteWalletError> {
+    let (ledger, ledger_base_pubkey) = get_ledger();
+
+    let derivation_path = DerivationPath::new_bip44(Some(12345), None);
+
+    let from = ledger.get_pubkey(&derivation_path, false)?;
+    let instruction = system_instruction::transfer(&from, &ledger_base_pubkey, 42);
+    let lookup_table = AddressLookupTableAccount {
+        key: solana_sdk::pubkey::Pubkey::new_unique(),
+        addresses: vec![from, ledger_base_pubkey],
+    };
+    let message = MessageV0::try_compile(
+        &from,
+        &[instruction],
+        &[lookup_table.clone()],
+        Hash::default(),
+    )
+    .unwrap()
+    .serialize();
+    let signature = ledger.sign_message(&derivation_path, &message)?;
+    assert!(signature.verify(from.as_ref(), &message));
+
+    // Test large transaction
+    let recipients: Vec<(Pubkey, u64)> = (0..10).map(|_| (Pubkey::new_unique(), 42)).collect();
+    let instructions = system_instruction::transfer_many(&from, &recipients);
+    let message = MessageV0::try_compile(&from, &instructions, &[lookup_table], Hash::default())
+        .unwrap()
+        .serialize();
     let hash = solana_sdk::hash::hash(&message);
     println!("Expected hash: {}", hash);
     let signature = ledger.sign_message(&derivation_path, &message)?;
@@ -1678,6 +1743,8 @@ macro_rules! run {
 fn do_run_tests() -> Result<(), RemoteWalletError> {
     ensure_blind_signing()?;
 
+    run!(test_ledger_sign_versioned_transaction);
+    run!(test_ledger_sign_versioned_transaction_with_table);
     run!(test_ledger_sign_offchain_message_ascii);
     run!(test_ledger_sign_offchain_message_utf8);
     run!(test_ledger_transfer_with_memos);

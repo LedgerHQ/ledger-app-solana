@@ -243,9 +243,9 @@ async function solanaLedgerGetPubkey(transport, derivation_path) {
 async function solanaLedgerSignTransaction(
   transport,
   derivation_path,
-  transaction
+  message
 ) {
-  const msg_bytes = transaction.compileMessage().serialize();
+  const msg_bytes = message.serialize();
 
   // XXX: Ledger app only supports a single derivation_path per call ATM
   var num_paths = Buffer.alloc(1);
@@ -325,7 +325,7 @@ async function solanaLedgerSignOffchainMessage(
   let sig_bytes = await solanaLedgerSignTransaction(
     transport,
     from_derivation_path,
-    tx
+    tx.compileMessage()
   );
 
   let sig_string = bs58.encode(sig_bytes);
@@ -334,6 +334,29 @@ async function solanaLedgerSignOffchainMessage(
   // verify transfer signature
   tx.addSignature(from_pubkey, sig_bytes);
   console.log("Sig verifies:", tx.verifySignatures());
+
+  // create and sign versioned transfer transaction
+  const messageV0 = solana.MessageV0.compile({
+    addressLookupTableAccounts: [],
+    instructions: [ix],
+    payerKey: from_pubkey,
+    recentBlockhash,
+  });
+
+  sig_bytes = await solanaLedgerSignTransaction(
+    transport,
+    from_derivation_path,
+    messageV0
+  );
+  sig_string = bs58.encode(sig_bytes);
+  console.log("Sig len:", sig_bytes.length, "sig:", sig_string);
+
+  let verifies = nacl.sign.detached.verify(
+    messageV0.serialize(),
+    sig_bytes,
+    from_pubkey.toBuffer()
+  );
+  console.log("Sig verifies:", verifies);
 
   // create and sign off-chain message in ascii
   // TIP: enable expert mode in Ledger to see message details

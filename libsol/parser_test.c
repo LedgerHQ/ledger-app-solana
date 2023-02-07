@@ -305,7 +305,7 @@ void test_parse_instruction() {
     Parser parser = {message, sizeof(message)};
     Instruction instruction;
     assert(parse_instruction(&parser, &instruction) == 0);
-    MessageHeader header = {{0, 0, 0, 35}, NULL, NULL, 1};
+    MessageHeader header = {false, 0, {0, 0, 0, 35}, NULL, NULL, 1};
     assert(instruction_validate(&instruction, &header) == 0);
     assert(parser_is_empty(&parser));
     assert(instruction.accounts[0] == 33);

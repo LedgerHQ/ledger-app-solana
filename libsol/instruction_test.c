@@ -12,51 +12,93 @@ void test_instruction_program_id_system() {
     Pubkey program_id;
     memcpy(&program_id, &system_program_id, PUBKEY_SIZE);
     Instruction instruction = {0, NULL, 0, NULL, 0};
-    MessageHeader header = {{0, 0, 0, 1}, &program_id, NULL, 1};
-    assert(instruction_program_id(&instruction, &header) == ProgramIdSystem);
+    {
+        MessageHeader header = {false, 0, {0, 0, 0, 1}, &program_id, NULL, 1};
+        assert(instruction_program_id(&instruction, &header) == ProgramIdSystem);
+    }
+    {
+        MessageHeader header = {true, 0, {0, 0, 0, 1}, &program_id, NULL, 1};
+        assert(instruction_program_id(&instruction, &header) == ProgramIdSystem);
+    }
 }
 
 void test_instruction_program_id_stake() {
     Pubkey program_id;
     memcpy(&program_id, &stake_program_id, PUBKEY_SIZE);
     Instruction instruction = {0, NULL, 0, NULL, 0};
-    MessageHeader header = {{0, 0, 0, 1}, &program_id, NULL, 1};
-    assert(instruction_program_id(&instruction, &header) == ProgramIdStake);
+    {
+        MessageHeader header = {false, 0, {0, 0, 0, 1}, &program_id, NULL, 1};
+        assert(instruction_program_id(&instruction, &header) == ProgramIdStake);
+    }
+    {
+        MessageHeader header = {true, 0, {0, 0, 0, 1}, &program_id, NULL, 1};
+        assert(instruction_program_id(&instruction, &header) == ProgramIdStake);
+    }
 }
 
 void test_instruction_program_id_unknown() {
     Pubkey program_id = {{BYTES32_BS58_2}};
     Instruction instruction = {0, NULL, 0, NULL, 0};
-    MessageHeader header = {{0, 0, 0, 1}, &program_id, NULL, 1};
-    assert(instruction_program_id(&instruction, &header) == ProgramIdUnknown);
+    {
+        MessageHeader header = {false, 0, {0, 0, 0, 1}, &program_id, NULL, 1};
+        assert(instruction_program_id(&instruction, &header) == ProgramIdUnknown);
+    }
+    {
+        MessageHeader header = {true, 0, {0, 0, 0, 1}, &program_id, NULL, 1};
+        assert(instruction_program_id(&instruction, &header) == ProgramIdUnknown);
+    }
 }
 
 void test_instruction_validate_ok() {
     uint8_t accounts[] = {1, 2, 3};
     Instruction instruction = {0, accounts, 3, NULL, 0};
-    MessageHeader header = {{0, 0, 0, 4}, NULL, NULL, 1};
-    assert(instruction_validate(&instruction, &header) == 0);
+    {
+        MessageHeader header = {false, 0, {0, 0, 0, 4}, NULL, NULL, 1};
+        assert(instruction_validate(&instruction, &header) == 0);
+    }
+    {
+        MessageHeader header = {true, 0, {0, 0, 0, 4}, NULL, NULL, 1};
+        assert(instruction_validate(&instruction, &header) == 0);
+    }
 }
 
 void test_instruction_validate_bad_program_id_index_fail() {
     uint8_t accounts[] = {1, 2, 3};
     Instruction instruction = {4, accounts, 3, NULL, 0};
-    MessageHeader header = {{0, 0, 0, 4}, NULL, NULL, 1};
-    assert(instruction_validate(&instruction, &header) == 1);
+    {
+        MessageHeader header = {false, 0, {0, 0, 0, 4}, NULL, NULL, 1};
+        assert(instruction_validate(&instruction, &header) == 1);
+    }
+    {
+        MessageHeader header = {true, 0, {0, 0, 0, 4}, NULL, NULL, 1};
+        assert(instruction_validate(&instruction, &header) == 1);
+    }
 }
 
 void test_instruction_validate_bad_first_account_index_fail() {
     uint8_t accounts[] = {4, 2, 3};
     Instruction instruction = {0, accounts, 3, NULL, 0};
-    MessageHeader header = {{0, 0, 0, 4}, NULL, NULL, 1};
-    assert(instruction_validate(&instruction, &header) == 1);
+    {
+        MessageHeader header = {false, 0, {0, 0, 0, 4}, NULL, NULL, 1};
+        assert(instruction_validate(&instruction, &header) == 1);
+    }
+    {
+        MessageHeader header = {true, 0, {0, 0, 0, 4}, NULL, NULL, 1};
+        assert(instruction_validate(&instruction, &header) == 1);
+    }
 }
 
 void test_instruction_validate_bad_last_account_index_fail() {
     uint8_t accounts[] = {1, 2, 4};
     Instruction instruction = {0, accounts, 3, NULL, 0};
-    MessageHeader header = {{0, 0, 0, 4}, NULL, NULL, 1};
-    assert(instruction_validate(&instruction, &header) == 1);
+    {
+        MessageHeader header = {false, 0, {0, 0, 0, 4}, NULL, NULL, 1};
+        assert(instruction_validate(&instruction, &header) == 1);
+    }
+    {
+        MessageHeader header = {true, 0, {0, 0, 0, 4}, NULL, NULL, 1};
+        assert(instruction_validate(&instruction, &header) == 1);
+    }
 }
 
 void test_static_brief_initializer_macros() {
@@ -133,6 +175,8 @@ void test_instruction_accounts_iterator_next() {
         {{BYTES32_BS58_5}},
     };
     MessageHeader header = {
+        false,
+        0,
         {0, 0, 0, ARRAY_LEN(header_pubkeys)},
         header_pubkeys,
         NULL,

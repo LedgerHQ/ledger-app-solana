@@ -122,7 +122,22 @@ int parse_hash(Parser* parser, const Hash** hash) {
     return 0;
 }
 
+int parse_version(Parser* parser, MessageHeader* header) {
+    BAIL_IF(check_buffer_length(parser, 1));
+    const uint8_t version = *parser->buffer;
+    if (version & 0x80) {
+        header->versioned = true;
+        header->version = version & 0x7f;
+        advance(parser, 1);
+    } else {
+        header->versioned = false;
+        header->version = 0;
+    }
+    return 0;
+}
+
 int parse_message_header(Parser* parser, MessageHeader* header) {
+    BAIL_IF(parse_version(parser, header));
     BAIL_IF(parse_pubkeys(parser, &header->pubkeys_header, &header->pubkeys));
     BAIL_IF(parse_blockhash(parser, &header->blockhash));
     BAIL_IF(parse_length(parser, &header->instructions_length));
