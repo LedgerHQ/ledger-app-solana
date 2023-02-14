@@ -22,9 +22,9 @@
  */
 enum Token_AccountState
 #ifdef __cplusplus
-  : uint8_t
-#endif // __cplusplus
- {
+    : uint8_t
+#endif  // __cplusplus
+{
     /**
      * Account is not yet initialized
      */
@@ -42,16 +42,16 @@ enum Token_AccountState
 };
 #ifndef __cplusplus
 typedef uint8_t Token_AccountState;
-#endif // __cplusplus
+#endif  // __cplusplus
 
 /**
  * Specifies the authority type for SetAuthority instructions
  */
 enum Token_AuthorityType
 #ifdef __cplusplus
-  : uint8_t
-#endif // __cplusplus
- {
+    : uint8_t
+#endif  // __cplusplus
+{
     /**
      * Authority to mint new tokens
      */
@@ -71,7 +71,7 @@ enum Token_AuthorityType
 };
 #ifndef __cplusplus
 typedef uint8_t Token_AuthorityType;
-#endif // __cplusplus
+#endif  // __cplusplus
 
 typedef uint8_t Token_Pubkey[32];
 

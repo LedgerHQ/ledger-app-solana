@@ -5,62 +5,53 @@
 #ifndef _GLOBALS_H_
 #define _GLOBALS_H_
 
-#define P1_CONFIRM 0x01
+#define CLA 0xE0
+
+// header offsets
+#define OFFSET_CLA              0
+#define OFFSET_INS              1
+#define OFFSET_P1               2
+#define OFFSET_P2               3
+#define OFFSET_LC               4
+#define OFFSET_CDATA            5
+#define DEPRECATED_OFFSET_CDATA 6
+
+#define P1_CONFIRM     0x01
 #define P1_NON_CONFIRM 0x00
 
 #define P2_EXTEND 0x01
-#define P2_MORE 0x02
+#define P2_MORE   0x02
 
-#define ROUND_TO_NEXT(x, next) \
-    (((x) == 0) ? 0 : ((((x - 1) / (next)) + 1) * (next)))
+#define ROUND_TO_NEXT(x, next) (((x) == 0) ? 0 : ((((x - 1) / (next)) + 1) * (next)))
 
 /* See constant by same name in sdk/src/packet.rs */
 #define PACKET_DATA_SIZE (1280 - 40 - 8)
 
-#define MAX_MESSAGE_LENGTH ROUND_TO_NEXT(PACKET_DATA_SIZE, USB_SEGMENT_SIZE)
-#define SIGNATURE_LENGTH 64
-#define HASH_LENGTH 32
-#define PUBKEY_LENGTH HASH_LENGTH
-#define BIP32_PATH 5
+#define MAX_BIP32_PATH_LENGTH             5
+#define MAX_DERIVATION_PATH_BUFFER_LENGTH (1 + MAX_BIP32_PATH_LENGTH * 4)
+#define TOTAL_SIGN_MESSAGE_BUFFER_LENGTH  (PACKET_DATA_SIZE + MAX_DERIVATION_PATH_BUFFER_LENGTH)
 
-enum ApduReply {
-    /* ApduReplySdk* come from nanos-secure-sdk/include/os.h.  Here we add the
-     * 0x68__ prefix that app_main() ORs into those values before sending them
-     * over the wire
-     */
-    ApduReplySdkException                 = 0x6801,
-    ApduReplySdkInvalidParameter          = 0x6802,
-    ApduReplySdkExceptionOverflow         = 0x6803,
-    ApduReplySdkExceptionSecurity         = 0x6804,
-    ApduReplySdkInvalidCrc                = 0x6805,
-    ApduReplySdkInvalidChecksum           = 0x6806,
-    ApduReplySdkInvalidCounter            = 0x6807,
-    ApduReplySdkNotSupported              = 0x6808,
-    ApduReplySdkInvalidState              = 0x6809,
-    ApduReplySdkTimeout                   = 0x6810,
-    ApduReplySdkExceptionPIC              = 0x6811,
-    ApduReplySdkExceptionAppExit          = 0x6812,
-    ApduReplySdkExceptionIoOverflow       = 0x6813,
-    ApduReplySdkExceptionIoHeader         = 0x6814,
-    ApduReplySdkExceptionIoState          = 0x6815,
-    ApduReplySdkExceptionIoReset          = 0x6816,
-    ApduReplySdkExceptionCxPort           = 0x6817,
-    ApduReplySdkExceptionSystem           = 0x6818,
-    ApduReplySdkNotEnoughSpace            = 0x6819,
+#define MAX_MESSAGE_LENGTH ROUND_TO_NEXT(TOTAL_SIGN_MESSAGE_BUFFER_LENGTH, USB_SEGMENT_SIZE)
+#define SIGNATURE_LENGTH   64
+#define HASH_LENGTH        32
+#define PUBKEY_LENGTH      HASH_LENGTH
+#define PRIVATEKEY_LENGTH  HASH_LENGTH
 
-    ApduReplyNoApduReceived               = 0x6982,
+#define MAX_OFFCHAIN_MESSAGE_LENGTH    (MAX_MESSAGE_LENGTH - 1 > 1212 ? 1212 : MAX_MESSAGE_LENGTH - 1)
+#define OFFCHAIN_MESSAGE_HEADER_LENGTH 20
 
-    ApduReplySolanaInvalidMessage         = 0x6a80,
-    ApduReplySolanaSummaryFinalizeFailed  = 0x6f00,
-    ApduReplySolanaSummaryUpdateFailed    = 0x6f01,
+typedef enum InstructionCode {
+    // DEPRECATED - Use non "16" suffixed variants below
+    InsDeprecatedGetAppConfiguration = 0x01,
+    InsDeprecatedGetPubkey = 0x02,
+    InsDeprecatedSignMessage = 0x03,
+    // END DEPRECATED
+    InsGetAppConfiguration = 0x04,
+    InsGetPubkey = 0x05,
+    InsSignMessage = 0x06,
+    InsSignOffchainMessage = 0x07
+} InstructionCode;
 
-    ApduReplyUnimplementedInstruction     = 0x6d00,
-    ApduReplyInvalidCla                   = 0x6e00,
-
-    ApduReplySuccess                      = 0x9000,
-};
-
-extern ux_state_t ux;
 // display stepped screens
 extern unsigned int ux_step;
 extern unsigned int ux_step_count;

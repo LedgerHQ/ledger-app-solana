@@ -2,8 +2,4 @@
 #include "sol/parser.h"
 #include "spl_memo_instruction.h"
 
-const Pubkey spl_memo_program_id = {{
-    PROGRAM_ID_SPL_MEMO
-}};
-
-
+const Pubkey spl_memo_program_id = {{PROGRAM_ID_SPL_MEMO}};

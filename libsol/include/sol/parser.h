@@ -5,8 +5,8 @@
 #include <stddef.h>
 #include <string.h>
 
-#define PUBKEY_SIZE 32
-#define HASH_SIZE 32
+#define PUBKEY_SIZE    32
+#define HASH_SIZE      32
 #define BLOCKHASH_SIZE HASH_SIZE
 
 typedef struct Parser {
@@ -51,11 +51,19 @@ typedef struct PubkeysHeader {
 } PubkeysHeader;
 
 typedef struct MessageHeader {
+    bool versioned;
+    uint8_t version;
     PubkeysHeader pubkeys_header;
     const Pubkey* pubkeys;
     const Blockhash* blockhash;
     size_t instructions_length;
 } MessageHeader;
+
+typedef struct OffchainMessageHeader {
+    uint8_t version;
+    uint8_t format;
+    uint16_t length;
+} OffchainMessageHeader;
 
 static inline int parser_is_empty(Parser* parser) {
     return parser->buffer_length == 0;
@@ -79,16 +87,14 @@ int parse_pubkey(Parser* parser, const Pubkey** pubkey);
 
 int parse_pubkeys_header(Parser* parser, PubkeysHeader* header);
 
-int parse_pubkeys(
-    Parser* parser,
-    PubkeysHeader* header,
-    const Pubkey** pubkeys
-);
+int parse_pubkeys(Parser* parser, PubkeysHeader* header, const Pubkey** pubkeys);
 
 int parse_blockhash(Parser* parser, const Hash** hash);
 #define parse_blockhash parse_hash
 
 int parse_message_header(Parser* parser, MessageHeader* header);
+
+int parse_offchain_message_header(Parser* parser, OffchainMessageHeader* header);
 
 int parse_instruction(Parser* parser, Instruction* instruction);
 

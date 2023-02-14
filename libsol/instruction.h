@@ -30,15 +30,8 @@ typedef struct InstructionInfo {
     };
 } InstructionInfo;
 
-enum ProgramId instruction_program_id(
-    const Instruction* instruction,
-    const MessageHeader* header
-);
-int instruction_validate(
-    const Instruction* instruction,
-    const MessageHeader* header
-);
-
+enum ProgramId instruction_program_id(const Instruction* instruction, const MessageHeader* header);
+int instruction_validate(const Instruction* instruction, const MessageHeader* header);
 
 typedef struct InstructionBrief {
     enum ProgramId program_id;
@@ -51,22 +44,21 @@ typedef struct InstructionBrief {
     };
 } InstructionBrief;
 
-#define SPL_ASSOCIATED_TOKEN_ACCOUNT_IX_BRIEF { ProgramIdSplAssociatedTokenAccount, .none = 0 }
-#define SPL_TOKEN_IX_BRIEF(spl_token_ix) { ProgramIdSplToken, .spl_token = (spl_token_ix) }
-#define SYSTEM_IX_BRIEF(system_ix) { ProgramIdSystem, .system = (system_ix) }
-#define STAKE_IX_BRIEF(stake_ix) { ProgramIdStake, .stake = (stake_ix) }
-#define VOTE_IX_BRIEF(vote_ix) { ProgramIdVote, .vote = (vote_ix) }
+#define SPL_ASSOCIATED_TOKEN_ACCOUNT_IX_BRIEF \
+    { ProgramIdSplAssociatedTokenAccount, .none = 0 }
+#define SPL_TOKEN_IX_BRIEF(spl_token_ix) \
+    { ProgramIdSplToken, .spl_token = (spl_token_ix) }
+#define SYSTEM_IX_BRIEF(system_ix) \
+    { ProgramIdSystem, .system = (system_ix) }
+#define STAKE_IX_BRIEF(stake_ix) \
+    { ProgramIdStake, .stake = (stake_ix) }
+#define VOTE_IX_BRIEF(vote_ix) \
+    { ProgramIdVote, .vote = (vote_ix) }
 
-bool instruction_info_matches_brief(
-    const InstructionInfo* info,
-    const InstructionBrief* brief
-);
-bool instruction_infos_match_briefs(
-    InstructionInfo* const *infos,
-    const InstructionBrief* briefs,
-    size_t len
-);
-
+bool instruction_info_matches_brief(const InstructionInfo* info, const InstructionBrief* brief);
+bool instruction_infos_match_briefs(InstructionInfo* const* infos,
+                                    const InstructionBrief* briefs,
+                                    size_t len);
 
 typedef struct InstructionAccountsIterator {
     const Pubkey* message_header_pubkeys;
@@ -75,17 +67,11 @@ typedef struct InstructionAccountsIterator {
     size_t current_instruction_account;
 } InstructionAccountsIterator;
 
-void instruction_accounts_iterator_init(
-    InstructionAccountsIterator* it,
-    const MessageHeader* header,
-    const Instruction* instruction
-);
+void instruction_accounts_iterator_init(InstructionAccountsIterator* it,
+                                        const MessageHeader* header,
+                                        const Instruction* instruction);
 
-int instruction_accounts_iterator_next(
-    InstructionAccountsIterator* it,
-    const Pubkey** next_account
-);
+int instruction_accounts_iterator_next(InstructionAccountsIterator* it,
+                                       const Pubkey** next_account);
 
-size_t instruction_accounts_iterator_remaining(
-    const InstructionAccountsIterator* it
-);
+size_t instruction_accounts_iterator_remaining(const InstructionAccountsIterator* it);

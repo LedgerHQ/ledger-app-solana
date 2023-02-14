@@ -7,69 +7,86 @@ on:
       - master
       - develop
   pull_request:
-    branches:
-      - master
-      - develop
 
 jobs:
-  job_nanoS_build_debug:
-    name: Build debug app for NanoS
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
-    steps:
-      - name: Clone
-        uses: actions/checkout@v2
-      - name: Build
-        run: |
-          make DEBUG=1
-      - name: Upload app binary
-        uses: actions/upload-artifact@v2
-        with:
-          name: app-nanoS-debug
-          path: bin
+  build_application:
+    strategy:
+      matrix:
+        sdk:
+        - path: $NANOS_SDK
+          name: nanos
+        - path: $NANOX_SDK
+          name: nanox
+        - path: $NANOSP_SDK
+          name: nanosp
 
-  job_nanoX_build_debug:
-    name: Build debug app for NanoX
     runs-on: ubuntu-latest
+
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+
     steps:
       - name: Clone
-        uses: actions/checkout@v2
-      - name: Build
+        uses: actions/checkout@v3
+
+      - name: Build application
         run: |
-          make DEBUG=1 BOLOS_SDK=$NANOX_SDK
-      - name: Upload app binary
-        uses: actions/upload-artifact@v2
+          make BOLOS_SDK=${{ matrix.sdk.path }} DEBUG=1
+          cp bin/app.elf bin/solana_${{ matrix.sdk.name }}.elf
+
+      - name: Upload application binaries
+        uses: actions/upload-artifact@v3
         with:
-          name: app-nanoX-debug
-          path: bin
+          name: solana_binaries
+          path: ./bin/solana_${{ matrix.sdk.name }}.elf
+          if-no-files-found: error
 
   job_scan_build:
     name: Clang Static Analyzer
+    needs: build_application
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Build with Clang Static Analyzer
         run: |
           make clean
           scan-build --use-cc=clang -analyze-headers -enable-checker security -enable-checker unix -enable-checker valist -o scan-build --status-bugs make default
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: scan-build
           path: scan-build
 
+  python_tests_nano:
+    name: NanoS Ragger tests
+    needs: build_application
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+      - name: Download all binaries
+        uses: actions/download-artifact@v3
+      - name: Gather artifacts
+        run: |
+          mkdir tests/elfs
+          mv *_binaries/*.elf tests/elfs
+      - name: Install APT dependencies
+        run: sudo apt-get update && sudo apt-get install -y qemu-user-static
+      - name: Install Ragger
+        run: |
+          pip install --extra-index-url https://test.pypi.org/simple/ -r tests/python/requirements.txt
+      - name: Run tests
+        run: pytest tests/python/ -v --tb=short --device all
+
   job_C_test:
     name: C tests
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-legacy:latest
     steps:
       - name: Clone
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Build unit tests
         run: make -C libsol

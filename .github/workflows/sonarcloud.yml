@@ -6,23 +6,19 @@ on:
       - master
       - develop
   pull_request:
-    branches:
-      - master
-      - develop
-    types: [opened, synchronize, reopened]
 
 jobs:
   build:
     name: SonarQube analyze
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-legacy:latest
     env:
       SONAR_SCANNER_VERSION: 4.7.0.2747
       SONAR_SERVER_URL: "https://sonarcloud.io"
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       - name: Set up JDK 11
@@ -35,8 +31,9 @@ jobs:
         run: |
           apt-get update -y
           apt-get upgrade -y
+          DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
           curl -sL https://deb.nodesource.com/setup_16.x | bash -
-          apt-get install -y gcovr nodejs unzip
+          apt-get install -y gcovr nodejs unzip lcov
           mkdir -p $HOME/.sonar
           curl -sSLo $HOME/.sonar/sonar-scanner.zip ${{ env.SONAR_SCANNER_DOWNLOAD_URL }}
           unzip -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/

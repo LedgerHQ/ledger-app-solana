@@ -10,3 +10,12 @@ src/glyphs.h
 gitignore
 .vagrant
 libsol/target
+
+# Python
+__pycache__
+.egg
+.pyc
+*~
+
+tests/elfs/
+tests/python/snapshots-tmp/

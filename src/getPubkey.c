@@ -1,104 +1,63 @@
+#include "apdu.h"
 #include "getPubkey.h"
 #include "os.h"
 #include "ux.h"
 #include "utils.h"
 #include "sol/printer.h"
 
-static uint8_t publicKey[PUBKEY_LENGTH];
-static char publicKeyStr[BASE58_PUBKEY_LENGTH];
+static uint8_t G_publicKey[PUBKEY_LENGTH];
+static char G_publicKeyStr[BASE58_PUBKEY_LENGTH];
 
-int read_derivation_path(
-    const uint8_t *dataBuffer,
-    size_t size,
-    uint32_t *derivationPath
-) {
-    if (size == 0) {
-        THROW(ApduReplySolanaInvalidMessage);
-    }
-    size_t len = dataBuffer[0];
-    dataBuffer += 1;
-    if (len < 0x01 || len > BIP32_PATH) {
-        THROW(ApduReplySolanaInvalidMessage);
-    }
-    if (1 + 4 * len > size) {
-        THROW(ApduReplySolanaInvalidMessage);
-    }
-
-    for (unsigned int i = 0; i < len; i++) {
-        derivationPath[i] = (
-            (dataBuffer[0] << 24u) | (dataBuffer[1] << 16u) |
-            (dataBuffer[2] << 8u) | (dataBuffer[3])
-        );
-        dataBuffer += 4;
-    }
-    return len;
+void reset_getpubkey_globals(void) {
+    MEMCLEAR(G_publicKey);
+    MEMCLEAR(G_publicKeyStr);
 }
 
 static uint8_t set_result_get_pubkey() {
-    uint8_t tx = 32;
-
-    memcpy(G_io_apdu_buffer, publicKey, 32);
-    return tx;
+    memcpy(G_io_apdu_buffer, G_publicKey, PUBKEY_LENGTH);
+    return PUBKEY_LENGTH;
 }
 
 //////////////////////////////////////////////////////////////////////
 
-UX_STEP_NOCB(
-    ux_display_public_flow_5_step,
-    bnnn_paging,
-    {
-        .title = "Pubkey",
-        .text = publicKeyStr,
-    });
-UX_STEP_VALID(
-    ux_display_public_flow_6_step,
-    pb,
-    sendResponse(set_result_get_pubkey(), true),
-    {
-        &C_icon_validate_14,
-        "Approve",
-    });
-UX_STEP_VALID(
-    ux_display_public_flow_7_step,
-    pb,
-    sendResponse(0, false),
-    {
-        &C_icon_crossmark,
-        "Reject",
-    });
+UX_STEP_NOCB(ux_display_public_flow_5_step,
+             bnnn_paging,
+             {
+                 .title = "Pubkey",
+                 .text = G_publicKeyStr,
+             });
+UX_STEP_CB(ux_display_public_flow_6_step,
+           pb,
+           sendResponse(set_result_get_pubkey(), true),
+           {
+               &C_icon_validate_14,
+               "Approve",
+           });
+UX_STEP_CB(ux_display_public_flow_7_step,
+           pb,
+           sendResponse(0, false),
+           {
+               &C_icon_crossmark,
+               "Reject",
+           });
 
 UX_FLOW(ux_display_public_flow,
-    &ux_display_public_flow_5_step,
-    &ux_display_public_flow_6_step,
-    &ux_display_public_flow_7_step
-);
+        &ux_display_public_flow_5_step,
+        &ux_display_public_flow_6_step,
+        &ux_display_public_flow_7_step);
 
-void handleGetPubkey(
-    uint8_t p1,
-    uint8_t p2,
-    uint8_t *dataBuffer,
-    uint16_t dataLength,
-    volatile unsigned int *flags,
-    volatile unsigned int *tx
-) {
-    UNUSED(p2);
+void handle_get_pubkey(volatile unsigned int *flags, volatile unsigned int *tx) {
+    if (!flags || !tx ||
+        (G_command.instruction != InsDeprecatedGetPubkey &&
+         G_command.instruction != InsGetPubkey) ||
+        G_command.state != ApduStatePayloadComplete) {
+        THROW(ApduReplySdkInvalidParameter);
+    }
 
-    uint32_t derivationPath[BIP32_PATH];
-    int pathLength = read_derivation_path(
-        dataBuffer,
-        dataLength,
-        derivationPath
-    );
+    get_public_key(G_publicKey, G_command.derivation_path, G_command.derivation_path_length);
+    encode_base58(G_publicKey, PUBKEY_LENGTH, G_publicKeyStr, BASE58_PUBKEY_LENGTH);
 
-    getPublicKey(derivationPath, publicKey, pathLength);
-    encode_base58(
-        publicKey,
-        PUBKEY_LENGTH,
-        publicKeyStr,
-        BASE58_PUBKEY_LENGTH
-    );
-
-    if (p1 == P1_NON_CONFIRM) {
+    if (G_command.non_confirm) {
         *tx = set_result_get_pubkey();
         THROW(ApduReplySuccess);
     } else {

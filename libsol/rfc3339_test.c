@@ -16,7 +16,7 @@ void test_rfc3339_format() {
     // seconds too small fails
     int64_t too_small = -EPOCH - 1;
     assert(rfc3339_format(s, sizeof(s), too_small) == 1);
-    
+
     assert(rfc3339_format(s, sizeof(s), -EPOCH) == 0);
     assert_string_equal(s, "0000-12-31 00:00:00");
     assert(rfc3339_format(s, sizeof(s), 0) == 0);

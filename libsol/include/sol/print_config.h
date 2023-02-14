@@ -9,7 +9,4 @@ typedef struct PrintConfig {
     const Pubkey* signer_pubkey;
 } PrintConfig;
 
-bool print_config_show_authority(
-    const PrintConfig* print_config,
-    const Pubkey* authority
-);
+bool print_config_show_authority(const PrintConfig* print_config, const Pubkey* authority);

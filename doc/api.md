@@ -1,5 +1,12 @@
-Solana application : Common Technical Specifications
-=======================================================
+# Solana application : Common Technical Specifications
+
+## 1.3.1
+
+- Add support for versioned messages
+
+## 1.3.0
+
+- Add SIGN SOLANA OFF-CHAIN MESSAGE
 
 ## About
 
@@ -7,7 +14,9 @@ This application describes the APDU messages interface to communicate with the S
 
 The application covers the following functionalities :
 
-   - Retrieve an address given an account number
+- Retrieve an address given an account number
+- Sign Solana transaction
+- Sign off-chain message
 
 The application interface can be accessed over HID or BLE
 
@@ -21,9 +30,9 @@ _This command returns specific application configuration_
 
 ##### Command
 
-| *CLA*         | *INS*         | *P1*  | *P2*          | *Lc*          | *Le*   |
-| ------------- |:-------------:| -----:| ------------- |:-------------:| -----: |
-| E0            | 04            | 00    | 00            | 00            | 04     |
+| _CLA_ | _INS_ | _P1_ | _P2_ | _Lc_ | _Le_ |
+| ----- | :---: | ---: | ---- | :--: | ---: |
+| E0    |  04   |   00 | 00   |  00  |   04 |
 
 ##### Input data
 
@@ -31,15 +40,13 @@ _None_
 
 ##### Output data
 
-
-| *Description*                                                                     | *Length*
-| ------------- |:-------------:|
-| Dummy setting n°1 value                                                           | 01
-| Dummy setting n°2 value                                                           | 01
-| Application major version                                                         | 01
-| Application minor version                                                         | 01
-| Application patch version                                                         | 01
-
+| _Description_             | _Length_ |
+| ------------------------- | :------: |
+| Dummy setting n°1 value   |    01    |
+| Dummy setting n°2 value   |    01    |
+| Application major version |    01    |
+| Application minor version |    01    |
+| Application patch version |    01    |
 
 ### GET PUBKEY
 
@@ -49,29 +56,24 @@ _This command returns a Solana pubkey for the given BIP 32 path_
 
 ##### Command
 
-| *CLA*         | *INS*         | *P1*  | *P2*          | *Lc*          | *Le*   |
-| ------------- |:-------------:| -----:| ------------- |:-------------:| -----: |
-| E0            | 05            | 00    | 00            | variable          | variable     |
-
-
+| _CLA_ | _INS_ | _P1_ | _P2_ |   _Lc_   |     _Le_ |
+| ----- | :---: | ---: | ---- | :------: | -------: |
+| E0    |  05   |   00 | 00   | variable | variable |
 
 ##### Input data
 
-
-| *Description*                                                                     | *Length*
-| ------------- |:-------------:|
-| Number of BIP 32 derivations to perform (3 or 4)                                  | 1
-| First derivation index (big endian)                                               | 4
-| ...                                                                               | 4
-| Last derivation index (big endian)                                                | 4
+| _Description_                                    | _Length_ |
+| ------------------------------------------------ | :------: |
+| Number of BIP 32 derivations to perform (3 or 4) |    1     |
+| First derivation index (big endian)              |    4     |
+| ...                                              |    4     |
+| Last derivation index (big endian)               |    4     |
 
 ##### Output data
 
-
-| *Description*                                                                     | *Length*
-| ------------- |:-------------:|
-| Pubkey                                                                            | 32
-
+| _Description_ | _Length_ |
+| ------------- | :------: |
+| Pubkey        |    32    |
 
 ### SIGN SOLANA TRANSACTION
 
@@ -81,31 +83,55 @@ _This command signs a Solana Transaction after having the user validate the tran
 
 ##### Command
 
-
-| *CLA* | *INS*  | *P1*               | *P2*       | *Lc*     | *Le*
-| ------------- |:-------------:| -----:| ------------- |:-------------:| -----: |
-|   E0  |   06   |  01                |   00       | variable | variable
-
+| _CLA_ | _INS_ | _P1_ | _P2_ |   _Lc_   |     _Le_ |
+| ----- | :---: | ---: | ---- | :------: | -------: |
+| E0    |  06   |   01 | 00   | variable | variable |
 
 ##### Input data
 
-
-| *Description*                                                                     | *Length*
-| ------------- |:-------------:|
-| Number of signers (derivation paths) (always 1)                                   | 1
-| Number of BIP 32 derivations to perform (2, 3 or 4)                               | 1
-| First derivation index (big endian)                                               | 4
-| ...                                                                               | 4
-| Last derivation index (big endian)                                                | 4
-| Serialized transaction                                                            | variable
+| _Description_                                       | _Length_ |
+| --------------------------------------------------- | :------: |
+| Number of signers (derivation paths) (always 1)     |    1     |
+| Number of BIP 32 derivations to perform (2, 3 or 4) |    1     |
+| First derivation index (big endian)                 |    4     |
+| ...                                                 |    4     |
+| Last derivation index (big endian)                  |    4     |
+| Serialized transaction                              | variable |
 
 ##### Output data
 
+| _Description_ | _Length_ |
+| ------------- | :------: |
+| Signature     |    64    |
 
-| *Description*                                                                     | *Length*
-| ------------- |:-------------:|
-| Signature                                                                         | 64
+### SIGN SOLANA OFF-CHAIN MESSAGE
 
+#### Description
+
+_This command signs a Solana Off-Chain Message after having the user validate the text of ASCII encoded messages, or hash of UTF-8 encoded messages:_
+
+##### Command
+
+| _CLA_ | _INS_ | _P1_ | _P2_ |   _Lc_   |     _Le_ |
+| ----- | :---: | ---: | ---- | :------: | -------: |
+| E0    |  07   |   01 | 00   | variable | variable |
+
+##### Input data
+
+| _Description_                                       | _Length_ |
+| --------------------------------------------------- | :------: |
+| Number of signers (derivation paths) (always 1)     |    1     |
+| Number of BIP 32 derivations to perform (2, 3 or 4) |    1     |
+| First derivation index (big endian)                 |    4     |
+| ...                                                 |    4     |
+| Last derivation index (big endian)                  |    4     |
+| Serialized off-chain message                        | variable |
+
+##### Output data
+
+| _Description_ | _Length_ |
+| ------------- | :------: |
+| Signature     |    64    |
 
 ## Transport protocol
 
@@ -115,14 +141,12 @@ _Ledger APDUs requests and responses are encapsulated using a flexible protocol 
 
 The common transport header is defined as follows:
 
-
-| *Description*                                                                     | *Length*
-| ------------- |:-------------:|
-| Communication channel ID (big endian)                                             | 2
-| Command tag                                                                       | 1
-| Packet sequence index (big endian)                                                | 2
-| Payload                                                                           | var
-
+| _Description_                         | _Length_ |
+| ------------------------------------- | :------: |
+| Communication channel ID (big endian) |    2     |
+| Command tag                           |    1     |
+| Packet sequence index (big endian)    |    2     |
+| Payload                               |   var    |
 
 The Communication channel ID allows commands multiplexing over the same physical link. It is not used for the time being, and should be set to 0101 to avoid compatibility issues with implementations ignoring a leading 00 byte.
 
@@ -134,26 +158,24 @@ The Packet sequence index describes the current sequence for fragmented payloads
 
 APDU Command payloads are encoded as follows :
 
-
-| *Description*                                                                     | *Length*
-| ------------- |:-------------:|
-| APDU length (big endian)                                                          | 2
-| APDU CLA                                                                          | 1
-| APDU INS                                                                          | 1
-| APDU P1                                                                           | 1
-| APDU P2                                                                           | 1
-| APDU data length                                                                  | 1
-| Optional APDU data                                                                | var
+| _Description_            | _Length_ |
+| ------------------------ | :------: |
+| APDU length (big endian) |    2     |
+| APDU CLA                 |    1     |
+| APDU INS                 |    1     |
+| APDU P1                  |    1     |
+| APDU P2                  |    1     |
+| APDU data length         |    1     |
+| Optional APDU data       |   var    |
 
 APDU payload is encoded according to the APDU case
 
-
-| Case Number  | *Lc* | *Le* | Case description
-| -----------  | ---- | ---- | ----------------
-|   1          |  0   |  0   | No data in either direction - L is set to 00
-|   2          |  0   |  !0  | Input Data present, no Output Data - L is set to Lc
-|   3          |  !0  |  0   | Output Data present, no Input Data - L is set to Le
-|   4          |  !0  |  !0  | Both Input and Output Data are present - L is set to Lc
+| Case Number | _Lc_ | _Le_ | Case description                                        |
+| ----------- | ---- | ---- | ------------------------------------------------------- |
+| 1           | 0    | 0    | No data in either direction - L is set to 00            |
+| 2           | 0    | !0   | Input Data present, no Output Data - L is set to Lc     |
+| 3           | !0   | 0    | Output Data present, no Input Data - L is set to Le     |
+| 4           | !0   | !0   | Both Input and Output Data are present - L is set to Lc |
 
 #### Deprecation notice
 
@@ -167,12 +189,10 @@ The `ADPU data length` field was formerly serialized as a 16bit unsigned big end
 
 APDU Response payloads are encoded as follows :
 
-
-| *Description*                                                                     | *Length*
-| ------------- |:-------------:|
-| APDU response length (big endian)                                                 | 2
-| APDU response data and Status Word                                                | var
-
+| _Description_                      | _Length_ |
+| ---------------------------------- | :------: |
+| APDU response length (big endian)  |    2     |
+| APDU response data and Status Word |   var    |
 
 ### USB mapping
 
@@ -194,11 +214,13 @@ The following standard Status Words are returned for all APDUs - some specific S
 
 ##### Status Words
 
-| *SW*     | *Description*
-| ------------- |:-------------:|
-|   6700   | Incorrect length
-|   6982   | Security status not satisfied (Canceled by user)
-|   6A80   | Invalid data
-|   6B00   | Incorrect parameter P1 or P2
-|   6Fxx   | Technical problem (Internal error, please report)
-|   9000   | Normal ending of the command
+| _SW_ |                   _Description_                   |
+| ---- | :-----------------------------------------------: |
+| 6700 |                 Incorrect length                  |
+| 6982 | Security status not satisfied (Canceled by user)  |
+| 6A80 |                   Invalid data                    |
+| 6A81 |         Invalid off-chain message header          |
+| 6A82 |         Invalid off-chain message format          |
+| 6B00 |           Incorrect parameter P1 or P2            |
+| 6Fxx | Technical problem (Internal error, please report) |
+| 9000 |           Normal ending of the command            |

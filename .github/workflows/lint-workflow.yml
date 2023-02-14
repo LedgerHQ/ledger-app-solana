@@ -1,0 +1,48 @@
+name: Code style check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+
+jobs:
+  job_lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+
+      - name: Lint src
+        uses: DoozyX/clang-format-lint-action@v0.13
+        with:
+          source: './src'
+          extensions: 'h,c'
+          clangFormatVersion: 12.0.0
+
+      - name: Lint libsol
+        uses: DoozyX/clang-format-lint-action@v0.13
+        with:
+          source: './libsol'
+          extensions: 'h,c'
+          clangFormatVersion: 12.0.0
+
+  misspell:
+    name: Check misspellings
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clone
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Check misspellings
+      uses: codespell-project/actions-codespell@2391250ab05295bddd51e36a8c6295edb6343b0e
+      with:
+        # Use Config file when the github action supports it
+        builtin: clear,rare
+        check_filenames: true
+        skip: ./libsol,./tests

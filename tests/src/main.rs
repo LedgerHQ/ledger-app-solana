@@ -6,15 +6,21 @@ use solana_remote_wallet::{
     remote_wallet::{initialize_wallet_manager, RemoteWallet, RemoteWalletError},
 };
 use solana_sdk::{
+    address_lookup_table_account::AddressLookupTableAccount,
     derivation_path::DerivationPath,
+    hash::Hash,
     instruction::{AccountMeta, Instruction},
-    message::Message,
+    message::{v0::Message as MessageV0, Message},
     pubkey::Pubkey,
+    stake::{
+        instruction as stake_instruction, program as solana_stake_program, state as stake_state,
+    },
     system_instruction, system_program,
 };
-use solana_stake_program::{stake_instruction, stake_state};
 use solana_vote_program::{vote_instruction, vote_state};
-use spl_associated_token_account::*;
+use spl_associated_token_account::{
+    get_associated_token_address, instruction::create_associated_token_account,
+};
 use std::{collections::HashSet, sync::Arc};
 
 fn get_ledger() -> (Arc<LedgerWallet>, Pubkey) {
@@ -85,6 +91,69 @@ fn test_ledger_sign_transaction() -> Result<(), RemoteWalletError> {
     Ok(())
 }
 
+// This test requires interactive approval of message signing on the ledger.
+fn test_ledger_sign_versioned_transaction() -> Result<(), RemoteWalletError> {
+    let (ledger, ledger_base_pubkey) = get_ledger();
+
+    let derivation_path = DerivationPath::new_bip44(Some(12345), None);
+
+    let from = ledger.get_pubkey(&derivation_path, false)?;
+    let instruction = system_instruction::transfer(&from, &ledger_base_pubkey, 42);
+    let message = MessageV0::try_compile(&ledger_base_pubkey, &[instruction], &[], Hash::default())
+        .unwrap()
+        .serialize();
+    let signature = ledger.sign_message(&derivation_path, &message)?;
+    assert!(signature.verify(from.as_ref(), &message));
+
+    // Test large transaction
+    let recipients: Vec<(Pubkey, u64)> = (0..10).map(|_| (Pubkey::new_unique(), 42)).collect();
+    let instructions = system_instruction::transfer_many(&from, &recipients);
+    let message = MessageV0::try_compile(&ledger_base_pubkey, &instructions, &[], Hash::default())
+        .unwrap()
+        .serialize();
+    let hash = solana_sdk::hash::hash(&message);
+    println!("Expected hash: {}", hash);
+    let signature = ledger.sign_message(&derivation_path, &message)?;
+    assert!(signature.verify(from.as_ref(), &message));
+    Ok(())
+}
+
+// This test requires interactive approval of message signing on the ledger.
+fn test_ledger_sign_versioned_transaction_with_table() -> Result<(), RemoteWalletError> {
+    let (ledger, ledger_base_pubkey) = get_ledger();
+
+    let derivation_path = DerivationPath::new_bip44(Some(12345), None);
+
+    let from = ledger.get_pubkey(&derivation_path, false)?;
+    let instruction = system_instruction::transfer(&from, &ledger_base_pubkey, 42);
+    let lookup_table = AddressLookupTableAccount {
+        key: solana_sdk::pubkey::Pubkey::new_unique(),
+        addresses: vec![from, ledger_base_pubkey],
+    };
+    let message = MessageV0::try_compile(
+        &from,
+        &[instruction],
+        &[lookup_table.clone()],
+        Hash::default(),
+    )
+    .unwrap()
+    .serialize();
+    let signature = ledger.sign_message(&derivation_path, &message)?;
+    assert!(signature.verify(from.as_ref(), &message));
+
+    // Test large transaction
+    let recipients: Vec<(Pubkey, u64)> = (0..10).map(|_| (Pubkey::new_unique(), 42)).collect();
+    let instructions = system_instruction::transfer_many(&from, &recipients);
+    let message = MessageV0::try_compile(&from, &instructions, &[lookup_table], Hash::default())
+        .unwrap()
+        .serialize();
+    let hash = solana_sdk::hash::hash(&message);
+    println!("Expected hash: {}", hash);
+    let signature = ledger.sign_message(&derivation_path, &message)?;
+    assert!(signature.verify(from.as_ref(), &message));
+    Ok(())
+}
+
 fn test_ledger_sign_transaction_too_big() -> Result<(), RemoteWalletError> {
     // Test too big of a transaction
     let (ledger, ledger_base_pubkey) = get_ledger();
@@ -96,6 +165,47 @@ fn test_ledger_sign_transaction_too_big() -> Result<(), RemoteWalletError> {
     let instructions = system_instruction::transfer_many(&from, &recipients);
     let message = Message::new(&instructions, Some(&ledger_base_pubkey)).serialize();
     ledger.sign_message(&derivation_path, &message).unwrap_err();
+    Ok(())
+}
+
+// This test requires interactive approval of message signing on the ledger.
+fn test_ledger_sign_offchain_message_ascii() -> Result<(), RemoteWalletError> {
+    let (ledger, _ledger_base_pubkey) = get_ledger();
+
+    let derivation_path = DerivationPath::new_bip44(Some(12345), None);
+
+    let from = ledger.get_pubkey(&derivation_path, false)?;
+
+    let message = solana_sdk::offchain_message::OffchainMessage::new(0, b"Test message")
+        .map_err(|_| RemoteWalletError::InvalidInput("Bad message".to_string()))?
+        .serialize()
+        .map_err(|_| RemoteWalletError::InvalidInput("Failed to serialize message".to_string()))?;
+    let signature = ledger.sign_message(&derivation_path, &message)?;
+    assert!(signature.verify(from.as_ref(), &message));
+
+    Ok(())
+}
+
+// This test requires interactive approval of message signing on the ledger.
+fn test_ledger_sign_offchain_message_utf8() -> Result<(), RemoteWalletError> {
+    let (ledger, _ledger_base_pubkey) = get_ledger();
+
+    let derivation_path = DerivationPath::new_bip44(Some(12345), None);
+
+    let from = ledger.get_pubkey(&derivation_path, false)?;
+
+    let message =
+        solana_sdk::offchain_message::OffchainMessage::new(0, "Тестовое сообщение".as_bytes())
+            .map_err(|_| RemoteWalletError::InvalidInput("Bad message".to_string()))?
+            .serialize()
+            .map_err(|_| {
+                RemoteWalletError::InvalidInput("Failed to serialize message".to_string())
+            })?;
+    let hash = solana_sdk::hash::hash(&message);
+    println!("Expected hash: {}", hash);
+    let signature = ledger.sign_message(&derivation_path, &message)?;
+    assert!(signature.verify(from.as_ref(), &message));
+
     Ok(())
 }
 
@@ -1483,7 +1593,8 @@ fn test_spl_associated_token_account_create() -> Result<(), RemoteWalletError> {
     let derivation_path = DerivationPath::new_bip44(Some(12345), None);
     let owner = ledger.get_pubkey(&derivation_path, false)?;
     let mint = Pubkey::new_unique();
-    let instruction = create_associated_token_account(&owner, &owner, &mint);
+    let instruction =
+        create_associated_token_account(&owner, &owner, &mint, &spl_associated_token_account::id());
     let message = Message::new(&[instruction], Some(&owner)).serialize();
     let signature = ledger.sign_message(&derivation_path, &message)?;
     assert!(signature.verify(owner.as_ref(), &message));
@@ -1501,7 +1612,12 @@ fn test_spl_associated_token_account_create_with_transfer_checked() -> Result<()
     let recipient = Pubkey::new_unique();
     let recipient_holder = get_associated_token_address(&recipient, &mint);
     let instructions = vec![
-        create_associated_token_account(&sender, &recipient, &mint),
+        create_associated_token_account(
+            &sender,
+            &recipient,
+            &mint,
+            &spl_associated_token_account::id(),
+        ),
         spl_token::instruction::transfer_checked(
             &spl_token::id(),
             &sender_holder,
@@ -1550,7 +1666,12 @@ fn test_spl_associated_token_account_create_with_transfer_checked_and_serum_asse
     let recipient_holder = get_associated_token_address(&recipient, &mint);
     let instructions = vec![
         serum_assert_owner_program::instruction::check(&recipient, &system_program::id()),
-        create_associated_token_account(&sender, &recipient, &mint),
+        create_associated_token_account(
+            &sender,
+            &recipient,
+            &mint,
+            &spl_associated_token_account::id(),
+        ),
         spl_token::instruction::transfer_checked(
             &spl_token::id(),
             &sender_holder,
@@ -1601,6 +1722,7 @@ fn ensure_blind_signing() -> Result<(), RemoteWalletError> {
     }
     Ok(())
 }
+
 fn main() {
     solana_logger::setup();
     match do_run_tests() {
@@ -1621,6 +1743,10 @@ macro_rules! run {
 fn do_run_tests() -> Result<(), RemoteWalletError> {
     ensure_blind_signing()?;
 
+    run!(test_ledger_sign_versioned_transaction);
+    run!(test_ledger_sign_versioned_transaction_with_table);
+    run!(test_ledger_sign_offchain_message_ascii);
+    run!(test_ledger_sign_offchain_message_utf8);
     run!(test_ledger_transfer_with_memos);
     run!(test_spl_associated_token_account_create_with_transfer_checked_and_serum_assert_owner);
     run!(test_spl_associated_token_account_create_with_transfer_checked);
@@ -1686,5 +1812,6 @@ fn do_run_tests() -> Result<(), RemoteWalletError> {
     run!(test_create_stake_account_with_seed_and_nonce);
     run!(test_create_stake_account_checked_with_seed_and_nonce);
     run!(test_sign_full_shred_of_garbage_tx);
+
     Ok(())
 }

@@ -2,7 +2,6 @@
 #include "sol/parser.h"
 #include "sol/transaction_summary.h"
 
-
 int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     Parser parser = {Data, Size};
     PrintConfig print_config;
@@ -22,10 +21,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 
     enum SummaryItemKind summary_step_kinds[MAX_TRANSACTION_SUMMARY_ITEMS];
     size_t num_summary_steps = 0;
-    transaction_summary_finalize(
-            summary_step_kinds,
-            &num_summary_steps
-    );
+    transaction_summary_finalize(summary_step_kinds, &num_summary_steps);
 
     for (size_t i = 0; i < num_summary_steps; i++) {
         transaction_summary_display_item(i, DisplayFlagLongPubkeys);

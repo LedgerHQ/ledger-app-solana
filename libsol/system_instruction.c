@@ -8,12 +8,9 @@
 
 #define CREATE_ACCOUNT_TITLE "Create account"
 
-const Pubkey system_program_id = {{ PROGRAM_ID_SYSTEM }};
+const Pubkey system_program_id = {{PROGRAM_ID_SYSTEM}};
 
-static int parse_system_instruction_kind(
-    Parser* parser,
-    enum SystemInstructionKind* kind
-) {
+static int parse_system_instruction_kind(Parser* parser, enum SystemInstructionKind* kind) {
     uint32_t maybe_kind;
     BAIL_IF(parse_u32(parser, &maybe_kind));
     switch (maybe_kind) {
@@ -36,12 +33,10 @@ static int parse_system_instruction_kind(
 
 // Returns 0 and populates SystemTransferInfo if provided a MessageHeader
 // and a transfer instruction, otherwise non-zero.
-static int parse_system_transfer_instruction(
-    Parser* parser,
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemTransferInfo* info
-) {
+static int parse_system_transfer_instruction(Parser* parser,
+                                             const Instruction* instruction,
+                                             const MessageHeader* header,
+                                             SystemTransferInfo* info) {
     InstructionAccountsIterator it;
     instruction_accounts_iterator_init(&it, header, instruction);
 
@@ -53,12 +48,10 @@ static int parse_system_transfer_instruction(
     return 0;
 }
 
-static int parse_system_create_account_instruction(
-    Parser* parser,
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemCreateAccountInfo* info
-) {
+static int parse_system_create_account_instruction(Parser* parser,
+                                                   const Instruction* instruction,
+                                                   const MessageHeader* header,
+                                                   SystemCreateAccountInfo* info) {
     InstructionAccountsIterator it;
     instruction_accounts_iterator_init(&it, header, instruction);
 
@@ -74,8 +67,7 @@ static int parse_system_create_account_with_seed_instruction(
     Parser* parser,
     const Instruction* instruction,
     const MessageHeader* header,
-    SystemCreateAccountWithSeedInfo* info
-) {
+    SystemCreateAccountWithSeedInfo* info) {
     InstructionAccountsIterator it;
     instruction_accounts_iterator_init(&it, header, instruction);
 
@@ -89,12 +81,10 @@ static int parse_system_create_account_with_seed_instruction(
     return 0;
 }
 
-static int parse_system_advance_nonce_account_instruction(
-    Parser* parser,
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemAdvanceNonceInfo* info
-) {
+static int parse_system_advance_nonce_account_instruction(Parser* parser,
+                                                          const Instruction* instruction,
+                                                          const MessageHeader* header,
+                                                          SystemAdvanceNonceInfo* info) {
     UNUSED(parser);
 
     InstructionAccountsIterator it;
@@ -108,12 +98,10 @@ static int parse_system_advance_nonce_account_instruction(
     return 0;
 }
 
-static int parse_system_initialize_nonce_account_instruction(
-    Parser* parser,
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemInitializeNonceInfo* info
-) {
+static int parse_system_initialize_nonce_account_instruction(Parser* parser,
+                                                             const Instruction* instruction,
+                                                             const MessageHeader* header,
+                                                             SystemInitializeNonceInfo* info) {
     InstructionAccountsIterator it;
     instruction_accounts_iterator_init(&it, header, instruction);
 
@@ -128,12 +116,10 @@ static int parse_system_initialize_nonce_account_instruction(
     return 0;
 }
 
-static int parse_system_withdraw_nonce_account_instruction(
-    Parser* parser,
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemWithdrawNonceInfo* info
-) {
+static int parse_system_withdraw_nonce_account_instruction(Parser* parser,
+                                                           const Instruction* instruction,
+                                                           const MessageHeader* header,
+                                                           SystemWithdrawNonceInfo* info) {
     InstructionAccountsIterator it;
     instruction_accounts_iterator_init(&it, header, instruction);
 
@@ -150,12 +136,10 @@ static int parse_system_withdraw_nonce_account_instruction(
     return 0;
 }
 
-static int parse_system_authorize_nonce_account_instruction(
-    Parser* parser,
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemAuthorizeNonceInfo* info
-) {
+static int parse_system_authorize_nonce_account_instruction(Parser* parser,
+                                                            const Instruction* instruction,
+                                                            const MessageHeader* header,
+                                                            SystemAuthorizeNonceInfo* info) {
     InstructionAccountsIterator it;
     instruction_accounts_iterator_init(&it, header, instruction);
 
@@ -167,12 +151,10 @@ static int parse_system_authorize_nonce_account_instruction(
     return 0;
 }
 
-static int parse_system_allocate_instruction(
-    Parser* parser,
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemAllocateInfo* info
-) {
+static int parse_system_allocate_instruction(Parser* parser,
+                                             const Instruction* instruction,
+                                             const MessageHeader* header,
+                                             SystemAllocateInfo* info) {
     InstructionAccountsIterator it;
     instruction_accounts_iterator_init(&it, header, instruction);
 
@@ -183,12 +165,10 @@ static int parse_system_allocate_instruction(
     return 0;
 }
 
-static int parse_system_assign_instruction(
-    Parser* parser,
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemAssignInfo* info
-) {
+static int parse_system_assign_instruction(Parser* parser,
+                                           const Instruction* instruction,
+                                           const MessageHeader* header,
+                                           SystemAssignInfo* info) {
     InstructionAccountsIterator it;
     instruction_accounts_iterator_init(&it, header, instruction);
 
@@ -199,12 +179,10 @@ static int parse_system_assign_instruction(
     return 0;
 }
 
-static int parse_system_allocate_with_seed_instruction(
-    Parser* parser,
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemAllocateWithSeedInfo* info
-) {
+static int parse_system_allocate_with_seed_instruction(Parser* parser,
+                                                       const Instruction* instruction,
+                                                       const MessageHeader* header,
+                                                       SystemAllocateWithSeedInfo* info) {
     InstructionAccountsIterator it;
     instruction_accounts_iterator_init(&it, header, instruction);
 
@@ -220,86 +198,56 @@ static int parse_system_allocate_with_seed_instruction(
     return 0;
 }
 
-int parse_system_instructions(
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemInfo* info
-) {
+int parse_system_instructions(const Instruction* instruction,
+                              const MessageHeader* header,
+                              SystemInfo* info) {
     Parser parser = {instruction->data, instruction->data_length};
 
     BAIL_IF(parse_system_instruction_kind(&parser, &info->kind));
 
     switch (info->kind) {
         case SystemTransfer:
-            return parse_system_transfer_instruction(
-                &parser,
-                instruction,
-                header,
-                &info->transfer
-            );
+            return parse_system_transfer_instruction(&parser, instruction, header, &info->transfer);
         case SystemAdvanceNonceAccount:
-            return parse_system_advance_nonce_account_instruction(
-                &parser,
-                instruction,
-                header,
-                &info->advance_nonce
-            );
+            return parse_system_advance_nonce_account_instruction(&parser,
+                                                                  instruction,
+                                                                  header,
+                                                                  &info->advance_nonce);
         case SystemCreateAccount:
-            return parse_system_create_account_instruction(
-                &parser,
-                instruction,
-                header,
-                &info->create_account
-            );
+            return parse_system_create_account_instruction(&parser,
+                                                           instruction,
+                                                           header,
+                                                           &info->create_account);
         case SystemCreateAccountWithSeed:
             return parse_system_create_account_with_seed_instruction(
                 &parser,
                 instruction,
                 header,
-                &info->create_account_with_seed
-            );
+                &info->create_account_with_seed);
         case SystemInitializeNonceAccount:
-            return parse_system_initialize_nonce_account_instruction(
-                &parser,
-                instruction,
-                header,
-                &info->initialize_nonce
-            );
+            return parse_system_initialize_nonce_account_instruction(&parser,
+                                                                     instruction,
+                                                                     header,
+                                                                     &info->initialize_nonce);
         case SystemWithdrawNonceAccount:
-            return parse_system_withdraw_nonce_account_instruction(
-                &parser,
-                instruction,
-                header,
-                &info->withdraw_nonce
-            );
+            return parse_system_withdraw_nonce_account_instruction(&parser,
+                                                                   instruction,
+                                                                   header,
+                                                                   &info->withdraw_nonce);
         case SystemAuthorizeNonceAccount:
-            return parse_system_authorize_nonce_account_instruction(
-                &parser,
-                instruction,
-                header,
-                &info->authorize_nonce
-            );
+            return parse_system_authorize_nonce_account_instruction(&parser,
+                                                                    instruction,
+                                                                    header,
+                                                                    &info->authorize_nonce);
         case SystemAssign:
-            return parse_system_assign_instruction(
-                &parser,
-                instruction,
-                header,
-                &info->assign
-            );
+            return parse_system_assign_instruction(&parser, instruction, header, &info->assign);
         case SystemAllocate:
-            return parse_system_allocate_instruction(
-                &parser,
-                instruction,
-                header,
-                &info->allocate
-            );
+            return parse_system_allocate_instruction(&parser, instruction, header, &info->allocate);
         case SystemAllocateWithSeed:
-            return parse_system_allocate_with_seed_instruction(
-                &parser,
-                instruction,
-                header,
-                &info->allocate_with_seed
-            );
+            return parse_system_allocate_with_seed_instruction(&parser,
+                                                               instruction,
+                                                               header,
+                                                               &info->allocate_with_seed);
         case SystemAssignWithSeed:
             break;
     }
@@ -307,10 +255,8 @@ int parse_system_instructions(
     return 1;
 }
 
-static int print_system_transfer_info(
-    const SystemTransferInfo* info,
-    const PrintConfig* print_config
-) {
+static int print_system_transfer_info(const SystemTransferInfo* info,
+                                      const PrintConfig* print_config) {
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
@@ -327,10 +273,8 @@ static int print_system_transfer_info(
     return 0;
 }
 
-static int print_system_advance_nonce_account(
-    const SystemAdvanceNonceInfo* info,
-    const PrintConfig* print_config
-) {
+static int print_system_advance_nonce_account(const SystemAdvanceNonceInfo* info,
+                                              const PrintConfig* print_config) {
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
@@ -344,10 +288,8 @@ static int print_system_advance_nonce_account(
     return 0;
 }
 
-static int print_system_withdraw_nonce_info(
-    const SystemWithdrawNonceInfo* info,
-    const PrintConfig* print_config
-) {
+static int print_system_withdraw_nonce_info(const SystemWithdrawNonceInfo* info,
+                                            const PrintConfig* print_config) {
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
@@ -367,10 +309,8 @@ static int print_system_withdraw_nonce_info(
     return 0;
 }
 
-static int print_system_authorize_nonce_info(
-    const SystemAuthorizeNonceInfo* info,
-    const PrintConfig* print_config
-) {
+static int print_system_authorize_nonce_info(const SystemAuthorizeNonceInfo* info,
+                                             const PrintConfig* print_config) {
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
@@ -387,10 +327,8 @@ static int print_system_authorize_nonce_info(
     return 0;
 }
 
-static int print_system_allocate_info(
-    const SystemAllocateInfo* info,
-    const PrintConfig* print_config
-) {
+static int print_system_allocate_info(const SystemAllocateInfo* info,
+                                      const PrintConfig* print_config) {
     UNUSED(print_config);
 
     SummaryItem* item;
@@ -404,10 +342,7 @@ static int print_system_allocate_info(
     return 0;
 }
 
-static int print_system_assign_info(
-    const SystemAssignInfo* info,
-    const PrintConfig* print_config
-) {
+static int print_system_assign_info(const SystemAssignInfo* info, const PrintConfig* print_config) {
     UNUSED(print_config);
 
     SummaryItem* item;
@@ -426,48 +361,31 @@ int print_system_info(const SystemInfo* info, const PrintConfig* print_config) {
         case SystemTransfer:
             return print_system_transfer_info(&info->transfer, print_config);
         case SystemAdvanceNonceAccount:
-            return print_system_advance_nonce_account(
-                &info->advance_nonce,
-                print_config
-            );
+            return print_system_advance_nonce_account(&info->advance_nonce, print_config);
         case SystemCreateAccount:
-            return print_system_create_account_info(
-                CREATE_ACCOUNT_TITLE,
-                &info->create_account,
-                print_config
-            );
+            return print_system_create_account_info(CREATE_ACCOUNT_TITLE,
+                                                    &info->create_account,
+                                                    print_config);
         case SystemCreateAccountWithSeed:
-            return print_system_create_account_with_seed_info(
-                CREATE_ACCOUNT_TITLE,
-                &info->create_account_with_seed,
-                print_config
-            );
+            return print_system_create_account_with_seed_info(CREATE_ACCOUNT_TITLE,
+                                                              &info->create_account_with_seed,
+                                                              print_config);
         case SystemInitializeNonceAccount:
-            return print_system_initialize_nonce_info(
-                "Init nonce acct",
-                &info->initialize_nonce,
-                print_config
-            );
+            return print_system_initialize_nonce_info("Init nonce acct",
+                                                      &info->initialize_nonce,
+                                                      print_config);
         case SystemWithdrawNonceAccount:
-            return print_system_withdraw_nonce_info(
-                &info->withdraw_nonce,
-                print_config
-            );
+            return print_system_withdraw_nonce_info(&info->withdraw_nonce, print_config);
         case SystemAuthorizeNonceAccount:
-            return print_system_authorize_nonce_info(
-                &info->authorize_nonce,
-                print_config
-            );
+            return print_system_authorize_nonce_info(&info->authorize_nonce, print_config);
         case SystemAssign:
             return print_system_assign_info(&info->assign, print_config);
         case SystemAllocate:
             return print_system_allocate_info(&info->allocate, print_config);
         case SystemAllocateWithSeed:
-            return print_system_allocate_with_seed_info(
-                "Allocate acct",
-                &info->allocate_with_seed,
-                print_config
-            );
+            return print_system_allocate_with_seed_info("Allocate acct",
+                                                        &info->allocate_with_seed,
+                                                        print_config);
         case SystemAssignWithSeed:
             break;
     }
@@ -475,11 +393,9 @@ int print_system_info(const SystemInfo* info, const PrintConfig* print_config) {
     return 1;
 }
 
-int print_system_nonced_transaction_sentinel(
-    const SystemInfo* info,
-    const PrintConfig* print_config
-) {
-    if (print_config->expert_mode)  {
+int print_system_nonced_transaction_sentinel(const SystemInfo* info,
+                                             const PrintConfig* print_config) {
+    if (print_config->expert_mode) {
         const SystemAdvanceNonceInfo* nonce_info = &info->advance_nonce;
         SummaryItem* item;
 
@@ -493,11 +409,9 @@ int print_system_nonced_transaction_sentinel(
     return 0;
 }
 
-int print_system_create_account_info(
-    const char* primary_title,
-    const SystemCreateAccountInfo* info,
-    const PrintConfig* print_config
-) {
+int print_system_create_account_info(const char* primary_title,
+                                     const SystemCreateAccountInfo* info,
+                                     const PrintConfig* print_config) {
     SummaryItem* item;
     if (primary_title != NULL) {
         item = transaction_summary_primary_item();
@@ -515,11 +429,9 @@ int print_system_create_account_info(
     return 0;
 }
 
-int print_system_create_account_with_seed_info(
-    const char* primary_title,
-    const SystemCreateAccountWithSeedInfo* info,
-    const PrintConfig* print_config
-) {
+int print_system_create_account_with_seed_info(const char* primary_title,
+                                               const SystemCreateAccountWithSeedInfo* info,
+                                               const PrintConfig* print_config) {
     SummaryItem* item;
     if (primary_title != NULL) {
         item = transaction_summary_primary_item();
@@ -545,11 +457,9 @@ int print_system_create_account_with_seed_info(
     return 0;
 }
 
-int print_system_initialize_nonce_info(
-    const char* primary_title,
-    const SystemInitializeNonceInfo* info,
-    const PrintConfig* print_config
-) {
+int print_system_initialize_nonce_info(const char* primary_title,
+                                       const SystemInitializeNonceInfo* info,
+                                       const PrintConfig* print_config) {
     UNUSED(print_config);
 
     SummaryItem* item;
@@ -564,11 +474,9 @@ int print_system_initialize_nonce_info(
     return 0;
 }
 
-int print_system_allocate_with_seed_info(
-    const char* primary_title,
-    const SystemAllocateWithSeedInfo* info,
-    const PrintConfig* print_config
-) {
+int print_system_allocate_with_seed_info(const char* primary_title,
+                                         const SystemAllocateWithSeedInfo* info,
+                                         const PrintConfig* print_config) {
     SummaryItem* item;
 
     if (primary_title != NULL) {

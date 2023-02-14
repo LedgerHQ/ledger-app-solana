@@ -96,36 +96,21 @@ typedef struct SystemInfo {
     };
 } SystemInfo;
 
-int parse_system_instructions(
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SystemInfo* info
-);
-int print_system_info(
-    const SystemInfo* info,
-    const PrintConfig* print_config
-);
-int print_system_nonced_transaction_sentinel(
-    const SystemInfo* info,
-    const PrintConfig* print_config
-);
-int print_system_create_account_info(
-    const char* primary_title,
-    const SystemCreateAccountInfo* info,
-    const PrintConfig* print_config
-);
-int print_system_create_account_with_seed_info(
-    const char* primary_title,
-    const SystemCreateAccountWithSeedInfo* info,
-    const PrintConfig* print_config
-);
-int print_system_initialize_nonce_info(
-    const char* primary_title,
-    const SystemInitializeNonceInfo* info,
-    const PrintConfig* print_config
-);
-int print_system_allocate_with_seed_info(
-    const char* primary_title,
-    const SystemAllocateWithSeedInfo* info,
-    const PrintConfig* print_config
-);
+int parse_system_instructions(const Instruction* instruction,
+                              const MessageHeader* header,
+                              SystemInfo* info);
+int print_system_info(const SystemInfo* info, const PrintConfig* print_config);
+int print_system_nonced_transaction_sentinel(const SystemInfo* info,
+                                             const PrintConfig* print_config);
+int print_system_create_account_info(const char* primary_title,
+                                     const SystemCreateAccountInfo* info,
+                                     const PrintConfig* print_config);
+int print_system_create_account_with_seed_info(const char* primary_title,
+                                               const SystemCreateAccountWithSeedInfo* info,
+                                               const PrintConfig* print_config);
+int print_system_initialize_nonce_info(const char* primary_title,
+                                       const SystemInitializeNonceInfo* info,
+                                       const PrintConfig* print_config);
+int print_system_allocate_with_seed_info(const char* primary_title,
+                                         const SystemAllocateWithSeedInfo* info,
+                                         const PrintConfig* print_config);

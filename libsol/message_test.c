@@ -6,6 +6,9 @@
 #include <assert.h>
 #include <stdio.h>
 
+// Disable clang format for this file to keep clear buffer formating
+/* clang-format off */
+
 void test_process_message_body_ok() {
     Pubkey accounts[] = {
         {{171, 88, 202, 32, 185, 160, 182, 116, 130, 185, 73, 48, 13, 216, 170, 71, 172, 195, 165, 123, 87, 70, 130, 219, 5, 157, 240, 187, 26, 191, 158, 218}},
@@ -13,7 +16,7 @@ void test_process_message_body_ok() {
         {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
     };
     Blockhash blockhash = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-    PrintConfig print_config = { .header = {{1, 0, 1, 3}, accounts, &blockhash, 1}, .expert_mode = true };
+    PrintConfig print_config = { .header = {false, 0, {1, 0, 1, 3}, accounts, &blockhash, 1}, .expert_mode = true };
     uint8_t msg_body[] = {2, 2, 0, 1, 12, 2, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0};
 
     transaction_summary_reset();
@@ -32,7 +35,7 @@ void test_process_message_body_xfer_w_nonce_ok() {
         {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
     };
     Blockhash blockhash = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-    PrintConfig print_config = { .header = {{1, 0, 1, 3}, accounts, &blockhash, 2}, .expert_mode = true };
+    PrintConfig print_config = { .header = {false, 0, {1, 0, 1, 3}, accounts, &blockhash, 2}, .expert_mode = true };
     uint8_t msg_body[] = {
         2, 3, 0, 1, 0, 4, 4, 0, 0, 0, // Nonce
         2, 2, 0, 1, 12, 2, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0
@@ -47,7 +50,7 @@ void test_process_message_body_xfer_w_nonce_ok() {
 }
 
 void test_process_message_body_too_few_ix_fail() {
-    PrintConfig print_config = { .header = {{0, 0, 0, 0}, NULL, NULL, 0}, .expert_mode = true };
+    PrintConfig print_config = { .header = {false, 0, {0, 0, 0, 0}, NULL, NULL, 0}, .expert_mode = true };
     assert(process_message_body(NULL, 0, &print_config) == 1);
 }
 
@@ -68,12 +71,12 @@ void test_process_message_body_too_many_ix_fail() {
         uint8_t* start = msg_body + (i * XFER_IX_LEN);
         memcpy(start, xfer_ix, XFER_IX_LEN);
     }
-    PrintConfig print_config = { .header = {{1, 0, 1, 3}, accounts, &blockhash, TOO_MANY_IX}, .expert_mode = true };
+    PrintConfig print_config = { .header = {false, 0, {1, 0, 1, 3}, accounts, &blockhash, TOO_MANY_IX}, .expert_mode = true };
     assert(process_message_body(msg_body, ARRAY_LEN(msg_body), &print_config) == 1);
 }
 
 void test_process_message_body_data_too_short_fail() {
-    PrintConfig print_config = { .header = {{0, 0, 0, 0}, NULL, NULL, 1}, .expert_mode = true };
+    PrintConfig print_config = { .header = {false, 0, {0, 0, 0, 0}, NULL, NULL, 1}, .expert_mode = true };
     assert(process_message_body(NULL, 0, &print_config) == 1);
 }
 
@@ -84,7 +87,7 @@ void test_process_message_body_data_too_long_fail() {
         {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
     };
     Blockhash blockhash = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-    PrintConfig print_config = { .header = {{1, 0, 1, 3}, accounts, &blockhash, 1}, .expert_mode = true };
+    PrintConfig print_config = { .header = {false, 0, {1, 0, 1, 3}, accounts, &blockhash, 1}, .expert_mode = true };
     uint8_t msg_body[] = {
         2, 2, 0, 1, 12, 2, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0,
         0
@@ -93,7 +96,7 @@ void test_process_message_body_data_too_long_fail() {
 }
 
 void test_process_message_body_bad_ix_account_index_fail() {
-    PrintConfig print_config = { .header = {{0, 0, 0, 1}, NULL, NULL, 1}, .expert_mode = true };
+    PrintConfig print_config = { .header = {false, 0, {0, 0, 0, 1}, NULL, NULL, 1}, .expert_mode = true };
     uint8_t msg_body[] = {1, 0, 0};
     assert(process_message_body(msg_body, ARRAY_LEN(msg_body), &print_config) == 1);
 }
@@ -105,7 +108,7 @@ void test_process_message_body_unknown_ix_enum_fail() {
         {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
     };
     Blockhash blockhash = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-    PrintConfig print_config = { .header = {{1, 0, 1, 3}, accounts, &blockhash, 1}, .expert_mode = true };
+    PrintConfig print_config = { .header = {false, 0, {1, 0, 1, 3}, accounts, &blockhash, 1}, .expert_mode = true };
     uint8_t msg_body[] = {
         2, 2, 0, 1, 12, 255, 255, 255, 255, 42, 0, 0, 0, 0, 0, 0, 0,
     };
@@ -119,7 +122,7 @@ void test_process_message_body_ix_with_unknown_program_id_fail() {
         {{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255}},
     };
     Blockhash blockhash = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-    PrintConfig print_config = { .header = {{1, 0, 1, 3}, accounts, &blockhash, 1}, .expert_mode = true };
+    PrintConfig print_config = { .header = {false, 0, {1, 0, 1, 3}, accounts, &blockhash, 1}, .expert_mode = true };
     uint8_t msg_body[] = {
         2, 2, 0, 1, 12, 2, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0,
     };
@@ -1747,6 +1750,28 @@ void test_process_message_body_spl_token_thaw_account() {
 void test_process_message_body_spl_associated_token_create() {
     uint8_t message[] = {
         0x01, 0x00, 0x05,
+        0x06,
+            0x0a, 0xc5, 0x47, 0xa6, 0x54, 0x8f, 0xee, 0x6a, 0x3c, 0x47, 0xd2, 0x8c, 0x32, 0x2e, 0x05, 0x40, 0xc5, 0xe9, 0xb8, 0xb9, 0xf0, 0x01, 0xbd, 0x3c, 0x55, 0xd0, 0xff, 0xff, 0x17, 0xc1, 0x80, 0xde,
+            0x1d, 0x30, 0x63, 0xde, 0x69, 0x0b, 0xcd, 0xbe, 0x38, 0xec, 0x74, 0x44, 0x99, 0x23, 0x20, 0x25, 0xc1, 0xad, 0x64, 0x92, 0x6e, 0xd5, 0x6c, 0x69, 0xa5, 0xe3, 0x10, 0x34, 0x41, 0x19, 0xcb, 0x57,
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x06, 0xdd, 0xf6, 0xe1, 0xd7, 0x65, 0xa1, 0x93, 0xd9, 0xcb, 0xe1, 0x46, 0xce, 0xeb, 0x79, 0xac, 0x1c, 0xb4, 0x85, 0xed, 0x5f, 0x5b, 0x37, 0x91, 0x3a, 0x8c, 0xf5, 0x85, 0x7e, 0xff, 0x00, 0xa9,
+            0x8c, 0x97, 0x25, 0x8f, 0x4e, 0x24, 0x89, 0xf1, 0xbb, 0x3d, 0x10, 0x29, 0x14, 0x8e, 0x0d, 0x83, 0x0b, 0x5a, 0x13, 0x99, 0xda, 0xff, 0x10, 0x84, 0x04, 0x8e, 0x7b, 0xd8, 0xdb, 0xe9, 0xf8, 0x59,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01,
+            // SPL Associate Token Account -- Create
+            0x05,
+            0x06,
+                0x00, 0x01, 0x00, 0x02, 0x03, 0x04,
+            0x00,
+    };
+    process_message_body_and_sanity_check(message, sizeof(message), 5);
+}
+
+// old version of ata create that accessed the rent sysvar via account load
+void test_process_message_body_spl_associated_token_create_deprecated() {
+    uint8_t message[] = {
+        0x01, 0x00, 0x05,
         0x07,
             0x0a, 0xc5, 0x47, 0xa6, 0x54, 0x8f, 0xee, 0x6a, 0x3c, 0x47, 0xd2, 0x8c, 0x32, 0x2e, 0x05, 0x40, 0xc5, 0xe9, 0xb8, 0xb9, 0xf0, 0x01, 0xbd, 0x3c, 0x55, 0xd0, 0xff, 0xff, 0x17, 0xc1, 0x80, 0xde,
             0x1d, 0x30, 0x63, 0xde, 0x69, 0x0b, 0xcd, 0xbe, 0x38, 0xec, 0x74, 0x44, 0x99, 0x23, 0x20, 0x25, 0xc1, 0xad, 0x64, 0x92, 0x6e, 0xd5, 0x6c, 0x69, 0xa5, 0xe3, 0x10, 0x34, 0x41, 0x19, 0xcb, 0x57,
@@ -1835,6 +1860,8 @@ void test_process_message_body_spl_associated_token_create_with_transfer_and_ass
     };
     process_message_body_and_sanity_check(message, sizeof(message), 9);
 }
+
+/* clang-format on */
 
 int main() {
     test_process_message_body_spl_associated_token_create_with_transfer_and_assert_owner();

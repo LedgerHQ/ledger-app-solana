@@ -1,7 +1,43 @@
 #!/usr/bin/env bash
-docker_tag=0bdab1e
+docker_tag=73c9e07
+docker_image_base=ledger-app-builder
+docker_image="${docker_image_base}:${docker_tag}"
+
+if ! docker image inspect "$docker_image" &>/dev/null; then
+  echo "docker image \`$docker_image\` not found. please see README.md" 1>&2
+  exit 1
+fi
+
 here="$(readlink -f "$(dirname "$0")")"
+source "$here"/util/active-target.sh
+
+last_target_sdk="$(read_last_target_sdk_mnemonic "$here")"
+maybe_target_sdk="$(normalize_mnemonic "${1:-''}" false)"
+if [[ -n "$maybe_target_sdk" ]]; then
+  shift
+fi
+target_sdk="${maybe_target_sdk:-"$last_target_sdk"}"
+
+if [[ -z "$target_sdk" ]]; then
+  echo 'cannot resolve target sdk. please pass `s`, `x` or `sp` as the first argument' 1>&2
+  exit 1
+elif [[ -z "$last_target_sdk" ]]; then
+  write_last_target_sdk_mnemonic "$here" "$target_sdk"
+elif [[ "$target_sdk" != "$last_target_sdk" ]]; then
+  echo "target_sdk change requested. please run \`$0 clean\` first" 1>&2
+  exit 1
+fi
+
+bolos_sdk_var="$(sdk_mnemonic_to_bolos_variable "$target_sdk")"
+
 user=$(id -u)
 group=$(id -g)
 owner="$user:$group"
-docker run --rm -t -v "$here:/app" "ledger-app-builder:$docker_tag" /bin/bash -c "make ${*}; chown -fR $owner /app/{bin,debug,dep,libsol/target,obj,src/glyphs.{c,h}}"
+
+IFS='' read -r -d '' container_script <<EOF
+export "BOLOS_SDK=\$$bolos_sdk_var"
+make ${*}
+chown -fR $owner /app/{bin,debug,dep,libsol/target_sdk,obj,src/glyphs.{c,h}}
+EOF
+
+docker run --rm -t -v "$here:/app" "ledger-app-builder:$docker_tag" /bin/bash -c "$container_script"

@@ -4,8 +4,8 @@
 #include "sol/transaction_summary.h"
 #include "spl/token.h"
 
-#define SplTokenBody(b) Token_TokenInstruction_Token_ ## b ## _Body
-#define SplTokenKind(b) Token_TokenInstruction_ ## b
+#define SplTokenBody(b) Token_TokenInstruction_Token_##b##_Body
+#define SplTokenKind(b) Token_TokenInstruction_##b
 
 #define SplTokenInstructionKind Token_TokenInstruction_Tag
 
@@ -136,31 +136,18 @@ typedef struct SplTokenInfo {
     };
 } SplTokenInfo;
 
-int parse_spl_token_instructions(
-    const Instruction* instruction,
-    const MessageHeader* header,
-    SplTokenInfo* info
-);
-int print_spl_token_info(
-    const SplTokenInfo* info,
-    const PrintConfig* print_config
-);
-void summary_item_set_multisig_m_of_n(
-    SummaryItem* item,
-    uint8_t m,
-    uint8_t n
-);
+int parse_spl_token_instructions(const Instruction* instruction,
+                                 const MessageHeader* header,
+                                 SplTokenInfo* info);
+int print_spl_token_info(const SplTokenInfo* info, const PrintConfig* print_config);
+void summary_item_set_multisig_m_of_n(SummaryItem* item, uint8_t m, uint8_t n);
 
-#define SplTokenOptionPubkeyKind Token_COption_Pubkey_Tag
-#define SplTokenToOptionPubkeyKind(k) Token_COption_Pubkey_ ## k ## _Pubkey
-#define SplTokenOptionPubkeyBody Token_COption_Pubkey_Token_Some_Body_Pubkey
-#define SplTokenOptionPubkey Token_COption_Pubkey
-const Pubkey* spl_token_option_pubkey_get(
-    const SplTokenOptionPubkey* option_pubkey
-);
+#define SplTokenOptionPubkeyKind      Token_COption_Pubkey_Tag
+#define SplTokenToOptionPubkeyKind(k) Token_COption_Pubkey_##k##_Pubkey
+#define SplTokenOptionPubkeyBody      Token_COption_Pubkey_Token_Some_Body_Pubkey
+#define SplTokenOptionPubkey          Token_COption_Pubkey
+const Pubkey* spl_token_option_pubkey_get(const SplTokenOptionPubkey* option_pubkey);
 
-int print_spl_token_transfer_info(
-    const SplTokenTransferInfo* info,
-    const PrintConfig* print_config,
-    bool primary
-);
+int print_spl_token_transfer_info(const SplTokenTransferInfo* info,
+                                  const PrintConfig* print_config,
+                                  bool primary);

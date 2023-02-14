@@ -4,9 +4,9 @@
 #include <stdio.h>
 
 void test_print_config_show_authority() {
-    Pubkey signer = {{ BYTES32_BS58_1 }};
-    Pubkey not_signer = {{ BYTES32_BS58_2 }};
-    PrintConfig print_config = { .expert_mode = false, .signer_pubkey = &signer };
+    Pubkey signer = {{BYTES32_BS58_1}};
+    Pubkey not_signer = {{BYTES32_BS58_2}};
+    PrintConfig print_config = {.expert_mode = false, .signer_pubkey = &signer};
 
     assert(!print_config_show_authority(&print_config, &signer));
     assert(print_config_show_authority(&print_config, &not_signer));

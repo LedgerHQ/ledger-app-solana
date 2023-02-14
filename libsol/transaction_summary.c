@@ -18,23 +18,17 @@ struct SummaryItem {
     };
 };
 
-void summary_item_set_amount(
-    SummaryItem* item,
-    const char* title,
-    uint64_t value
-) {
+void summary_item_set_amount(SummaryItem* item, const char* title, uint64_t value) {
     item->kind = SummaryItemAmount;
     item->title = title;
     item->u64 = value;
 }
 
-void summary_item_set_token_amount(
-    SummaryItem* item,
-    const char* title,
-    uint64_t value,
-    const char* symbol,
-    uint8_t decimals
-) {
+void summary_item_set_token_amount(SummaryItem* item,
+                                   const char* title,
+                                   uint64_t value,
+                                   const char* symbol,
+                                   uint8_t decimals) {
     item->kind = SummaryItemTokenAmount;
     item->title = title;
     item->token_amount.value = value;
@@ -42,72 +36,44 @@ void summary_item_set_token_amount(
     item->token_amount.decimals = decimals;
 }
 
-void summary_item_set_i64(
-    SummaryItem* item,
-    const char* title,
-    int64_t value
-) {
+void summary_item_set_i64(SummaryItem* item, const char* title, int64_t value) {
     item->kind = SummaryItemI64;
     item->title = title;
     item->i64 = value;
 }
 
-void summary_item_set_u64(
-    SummaryItem* item,
-    const char* title,
-    uint64_t value
-) {
+void summary_item_set_u64(SummaryItem* item, const char* title, uint64_t value) {
     item->kind = SummaryItemU64;
     item->title = title;
     item->u64 = value;
 }
 
-void summary_item_set_pubkey(
-    SummaryItem* item,
-    const char* title,
-    const Pubkey* value
-) {
+void summary_item_set_pubkey(SummaryItem* item, const char* title, const Pubkey* value) {
     item->kind = SummaryItemPubkey;
     item->title = title;
     item->pubkey = value;
 }
 
-void summary_item_set_hash(
-    SummaryItem* item,
-    const char* title,
-    const Hash* value
-) {
+void summary_item_set_hash(SummaryItem* item, const char* title, const Hash* value) {
     item->kind = SummaryItemHash;
     item->title = title;
     item->hash = value;
 }
 
-void summary_item_set_sized_string(
-    SummaryItem* item,
-    const char* title,
-    const SizedString* value
-) {
+void summary_item_set_sized_string(SummaryItem* item, const char* title, const SizedString* value) {
     item->kind = SummaryItemSizedString;
     item->title = title;
     item->sized_string.length = value->length;
     item->sized_string.string = value->string;
 }
 
-void summary_item_set_string(
-    SummaryItem* item,
-    const char* title,
-    const char* value
-) {
+void summary_item_set_string(SummaryItem* item, const char* title, const char* value) {
     item->kind = SummaryItemString;
     item->title = title;
     item->string = value;
 }
 
-void summary_item_set_timestamp(
-    SummaryItem* item,
-    const char* title,
-    int64_t value
-) {
+void summary_item_set_timestamp(SummaryItem* item, const char* title, int64_t value) {
     item->kind = SummaryItemTimestamp;
     item->title = title;
     item->i64 = value;
@@ -132,8 +98,12 @@ void transaction_summary_reset() {
     explicit_bzero(&G_transaction_summary_text, TEXT_BUFFER_LENGTH);
 }
 
+static bool is_summary_item_used(const SummaryItem* item) {
+    return (item->kind != SummaryItemNone);
+}
+
 static SummaryItem* summary_item_as_unused(SummaryItem* item) {
-    if (item->kind == SummaryItemNone) {
+    if (!is_summary_item_used(item)) {
         return item;
     }
     return NULL;
@@ -162,7 +132,7 @@ SummaryItem* transaction_summary_nonce_authority_item() {
 SummaryItem* transaction_summary_general_item() {
     for (size_t i = 0; i < NUM_GENERAL_ITEMS; i++) {
         SummaryItem* item = &G_transaction_summary.general[i];
-        if (summary_item_as_unused(item) != NULL) {
+        if (!is_summary_item_used(item)) {
             return item;
         }
     }
@@ -177,153 +147,111 @@ int transaction_summary_set_fee_payer_pubkey(const Pubkey* pubkey) {
     return 0;
 }
 
-static int transaction_summary_update_display_for_item(
-    const SummaryItem* item,
-    enum DisplayFlags flags
-) {
+static int transaction_summary_update_display_for_item(const SummaryItem* item,
+                                                       enum DisplayFlags flags) {
     switch (item->kind) {
         case SummaryItemNone:
             return 1;
         case SummaryItemAmount:
-            BAIL_IF(
-                print_amount(
-                    item->u64,
-                    G_transaction_summary_text,
-                    BASE58_PUBKEY_LENGTH
-            ));
+            BAIL_IF(print_amount(item->u64, G_transaction_summary_text, BASE58_PUBKEY_LENGTH));
             break;
         case SummaryItemTokenAmount:
-            BAIL_IF(
-                print_token_amount(
-                    item->token_amount.value,
-                    item->token_amount.symbol,
-                    item->token_amount.decimals,
-                    G_transaction_summary_text,
-                    TEXT_BUFFER_LENGTH
-            ));
+            BAIL_IF(print_token_amount(item->token_amount.value,
+                                       item->token_amount.symbol,
+                                       item->token_amount.decimals,
+                                       G_transaction_summary_text,
+                                       TEXT_BUFFER_LENGTH));
             break;
         case SummaryItemI64:
-            BAIL_IF(
-                print_i64(
-                    item->i64,
-                    G_transaction_summary_text,
-                    TEXT_BUFFER_LENGTH
-            ));
+            BAIL_IF(print_i64(item->i64, G_transaction_summary_text, TEXT_BUFFER_LENGTH));
             break;
         case SummaryItemU64:
-            BAIL_IF(
-                print_u64(
-                    item->u64,
-                    G_transaction_summary_text,
-                    TEXT_BUFFER_LENGTH
-            ));
+            BAIL_IF(print_u64(item->u64, G_transaction_summary_text, TEXT_BUFFER_LENGTH));
             break;
         case SummaryItemPubkey: {
             char tmp_buf[BASE58_PUBKEY_LENGTH];
-            BAIL_IF(encode_base58(
-                item->pubkey,
-                PUBKEY_SIZE,
-                tmp_buf,
-                sizeof(tmp_buf)
-            ));
+            BAIL_IF(encode_base58(item->pubkey, PUBKEY_SIZE, tmp_buf, sizeof(tmp_buf)));
             if (flags & DisplayFlagLongPubkeys) {
-                BAIL_IF(
-                    print_string(
-                        tmp_buf,
-                        G_transaction_summary_text,
-                        TEXT_BUFFER_LENGTH
-                ));
+                BAIL_IF(print_string(tmp_buf, G_transaction_summary_text, TEXT_BUFFER_LENGTH));
             } else {
-                BAIL_IF(
-                    print_summary(
-                        tmp_buf,
-                        G_transaction_summary_text,
-                        BASE58_PUBKEY_SHORT,
-                        SUMMARY_LENGTH,
-                        SUMMARY_LENGTH
-                ));
+                BAIL_IF(print_summary(tmp_buf,
+                                      G_transaction_summary_text,
+                                      BASE58_PUBKEY_SHORT,
+                                      SUMMARY_LENGTH,
+                                      SUMMARY_LENGTH));
             }
             break;
         }
         case SummaryItemHash:
-            BAIL_IF(
-                encode_base58(
-                    item->hash,
-                    BLOCKHASH_SIZE,
-                    G_transaction_summary_text,
-                    TEXT_BUFFER_LENGTH
-            ));
+            BAIL_IF(encode_base58(item->hash,
+                                  BLOCKHASH_SIZE,
+                                  G_transaction_summary_text,
+                                  TEXT_BUFFER_LENGTH));
             break;
         case SummaryItemString:
-            print_string(
-                item->string,
-                G_transaction_summary_text,
-                TEXT_BUFFER_LENGTH
-            );
+            print_string(item->string, G_transaction_summary_text, TEXT_BUFFER_LENGTH);
             break;
         case SummaryItemSizedString:
-            print_sized_string(
-                &item->sized_string,
-                G_transaction_summary_text,
-                TEXT_BUFFER_LENGTH
-            );
+            print_sized_string(&item->sized_string, G_transaction_summary_text, TEXT_BUFFER_LENGTH);
             break;
         case SummaryItemTimestamp:
-            BAIL_IF(print_timestamp(
-                item->i64,
-                G_transaction_summary_text,
-                TEXT_BUFFER_LENGTH
-            ));
+            BAIL_IF(print_timestamp(item->i64, G_transaction_summary_text, TEXT_BUFFER_LENGTH));
             break;
     }
     print_string(item->title, G_transaction_summary_title, TITLE_SIZE);
     return 0;
 }
 
-int transaction_summary_display_item(size_t item_index, enum DisplayFlags flags) {
+// find item_index in G_transaction_summary in the following order:
+//     summary->primary
+//     used items of summary->general[]
+//     used summary->nonce_account
+//     used summary->nonce_authority
+//     summary->fee_payer
+
+static SummaryItem* transaction_summary_find_item(size_t item_index) {
     struct TransactionSummary* summary = &G_transaction_summary;
-    SummaryItem* item = NULL;
-    SummaryItem* maybe_item = &summary->primary;
+    size_t current_index = 0;
 
-    do {
-        if (item_index-- == 0) {
-            item = maybe_item;
-            break;
-        }
-        for (size_t i = 0; i < NUM_GENERAL_ITEMS; i++) {
-            maybe_item = &summary->general[i];
-            if (summary_item_as_unused(maybe_item) == NULL) {
-                if (item_index-- == 0) {
-                    item = maybe_item;
-                    break;
-                }
+    if (current_index == item_index) {
+        return &summary->primary;
+    }
+    ++current_index;
+
+    for (size_t i = 0; i < NUM_GENERAL_ITEMS; i++) {
+        if (is_summary_item_used(&summary->general[i])) {
+            if (current_index == item_index) {
+                return &summary->general[i];
             }
+            ++current_index;
         }
-        if (item != NULL) {
-            break;
-        }
-        maybe_item = &summary->nonce_account;
-        if (
-            (summary_item_as_unused(maybe_item) == NULL) &&
-            (item_index-- == 0)
-        ) {
-            item = maybe_item;
-            break;
-        }
-        maybe_item = &summary->nonce_authority;
-        if (
-            (summary_item_as_unused(maybe_item) == NULL) &&
-            (item_index-- == 0)
-        ) {
-            item = maybe_item;
-            break;
-        }
-        if (item_index-- == 0) {
-            item = &summary->fee_payer;
-            break;
-        }
-    } while (0);
+    }
 
+    if (is_summary_item_used(&summary->nonce_account)) {
+        if (current_index == item_index) {
+            return &summary->nonce_account;
+        }
+        ++current_index;
+    }
+
+    if (is_summary_item_used(&summary->nonce_authority)) {
+        if (current_index == item_index) {
+            return &summary->nonce_authority;
+        }
+        ++current_index;
+    }
+
+    if (current_index == item_index) {
+        return &summary->fee_payer;
+    }
+
+    return NULL;
+}
+
+int transaction_summary_display_item(size_t item_index, enum DisplayFlags flags) {
+    const SummaryItem* item;
+
+    item = transaction_summary_find_item(item_index);
     if (item == NULL) {
         return 1;
     }
@@ -331,17 +259,14 @@ int transaction_summary_display_item(size_t item_index, enum DisplayFlags flags)
     return transaction_summary_update_display_for_item(item, flags);
 }
 
-#define SET_IF_USED(item, item_kinds, index)    \
-    do {                                        \
-        if (item.kind != SummaryItemNone) {     \
-            item_kinds[index++] = item.kind;    \
-        }                                       \
-    } while(0)
+#define SET_IF_USED(item, item_kinds, index) \
+    do {                                     \
+        if (item.kind != SummaryItemNone) {  \
+            item_kinds[index++] = item.kind; \
+        }                                    \
+    } while (0)
 
-int transaction_summary_finalize(
-    enum SummaryItemKind* item_kinds,
-    size_t* item_kinds_len
-) {
+int transaction_summary_finalize(enum SummaryItemKind* item_kinds, size_t* item_kinds_len) {
     const TransactionSummary* summary = &G_transaction_summary;
     size_t index = 0;
 

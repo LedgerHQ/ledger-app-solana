@@ -31,15 +31,11 @@ typedef struct StakeDelegateInfo {
 // which looks like a `Lockup`, but all of the members are wrapped
 // with `Option<>`s
 typedef enum StakeLockupPresent {
-    StakeLockupHasNone      = 0,
+    StakeLockupHasNone = 0,
     StakeLockupHasTimestamp = 1 << 0,
-    StakeLockupHasEpoch     = 1 << 1,
+    StakeLockupHasEpoch = 1 << 1,
     StakeLockupHasCustodian = 1 << 2,
-    StakeLockupHasAll       = (
-        StakeLockupHasTimestamp
-        | StakeLockupHasEpoch
-        | StakeLockupHasCustodian
-    ),
+    StakeLockupHasAll = (StakeLockupHasTimestamp | StakeLockupHasEpoch | StakeLockupHasCustodian),
 } StakeLockupPresent;
 
 typedef struct StakeLockup {
@@ -114,34 +110,19 @@ typedef struct StakeInfo {
     };
 } StakeInfo;
 
-int parse_stake_instructions(
-    const Instruction* instruction,
-    const MessageHeader* header,
-    StakeInfo* info
-);
-int print_stake_info(
-    const StakeInfo* info,
-    const PrintConfig* print_config
-);
+int parse_stake_instructions(const Instruction* instruction,
+                             const MessageHeader* header,
+                             StakeInfo* info);
+int print_stake_info(const StakeInfo* info, const PrintConfig* print_config);
 
-int print_stake_initialize_info(
-    const char* primary_title,
-    const StakeInitializeInfo* info,
-    const PrintConfig* print_config
-);
+int print_stake_initialize_info(const char* primary_title,
+                                const StakeInitializeInfo* info,
+                                const PrintConfig* print_config);
 
-int print_stake_split_info1(
-    const StakeSplitInfo* info,
-    const PrintConfig* print_config
-);
+int print_stake_split_info1(const StakeSplitInfo* info, const PrintConfig* print_config);
 
-int print_stake_split_info2(
-    const StakeSplitInfo* info,
-    const PrintConfig* print_config
-);
+int print_stake_split_info2(const StakeSplitInfo* info, const PrintConfig* print_config);
 
-int print_delegate_stake_info(
-    const char* primary_title,
-    const StakeDelegateInfo* info,
-    const PrintConfig* print_config
-);
+int print_delegate_stake_info(const char* primary_title,
+                              const StakeDelegateInfo* info,
+                              const PrintConfig* print_config);
