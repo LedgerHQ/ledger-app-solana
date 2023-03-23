@@ -18,7 +18,7 @@
 #include "utils.h"
 #include "handle_get_pubkey.h"
 #include "handle_sign_message.h"
-#include "signOffchainMessage.h"
+#include "handle_sign_offchain_message.h"
 #include "apdu.h"
 #include "menu.h"
 

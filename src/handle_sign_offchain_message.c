@@ -11,6 +11,8 @@
 #include "sol/transaction_summary.h"
 #include "globals.h"
 #include "apdu.h"
+#include "handle_sign_offchain_message.h"
+
 
 // Store locally the derived public key content
 static Pubkey G_publicKey;
@@ -81,61 +83,6 @@ static bool is_data_ascii(const uint8_t *data, size_t length) {
 
 //////////////////////////////////////////////////////////////////////
 
-UX_STEP_NOCB(ux_sign_msg_text_step,
-             bnnn_paging,
-             {
-                 .title = "Message",
-                 .text = (const char *) G_command.message + OFFCHAIN_MESSAGE_HEADER_LENGTH,
-             });
-UX_STEP_CB(ux_sign_msg_approve_step,
-           pb,
-           sendResponse(set_result_sign_message(), true, true),
-           {
-               &C_icon_validate_14,
-               "Approve",
-           });
-UX_STEP_CB(ux_sign_msg_reject_step,
-           pb,
-           sendResponse(0, false, true),
-           {
-               &C_icon_crossmark,
-               "Reject",
-           });
-UX_STEP_NOCB_INIT(ux_sign_msg_summary_step,
-                  bnnn_paging,
-                  {
-                      size_t step_index = G_ux.flow_stack[stack_slot].index;
-                      enum DisplayFlags flags = DisplayFlagNone;
-                      if (N_storage.settings.pubkey_display == PubkeyDisplayLong) {
-                          flags |= DisplayFlagLongPubkeys;
-                      }
-                      if (transaction_summary_display_item(step_index, flags)) {
-                          THROW(ApduReplySolanaSummaryUpdateFailed);
-                      }
-                  },
-                  {
-                      .title = G_transaction_summary_title,
-                      .text = G_transaction_summary_text,
-                  });
-
-/*
-UX Steps:
-- Sign Message
-
-if expert mode:
-- Version
-- Format
-- Size
-- Hash
-- Signer
-else if utf8:
-- Hash
-
-if ascii:
-- message text
-*/
-static ux_flow_step_t const *flow_steps[8];
-
 void handle_sign_offchain_message(volatile unsigned int *flags, volatile unsigned int *tx) {
     if (!tx || G_command.instruction != InsSignOffchainMessage ||
         G_command.state != ApduStatePayloadComplete) {
@@ -201,23 +148,12 @@ void handle_sign_offchain_message(volatile unsigned int *flags, volatile unsigne
     }
 
     enum SummaryItemKind summary_step_kinds[MAX_TRANSACTION_SUMMARY_ITEMS];
-    size_t num_flow_steps = 0;
     size_t num_summary_steps = 0;
     if (transaction_summary_finalize(summary_step_kinds, &num_summary_steps)) {
         THROW(ApduReplySolanaSummaryFinalizeFailed);
     }
-    for (size_t i = 0; i < num_summary_steps; i++) {
-        flow_steps[num_flow_steps++] = &ux_sign_msg_summary_step;
-    }
 
-    if (is_ascii) {
-        flow_steps[num_flow_steps++] = &ux_sign_msg_text_step;
-    }
-    flow_steps[num_flow_steps++] = &ux_sign_msg_approve_step;
-    flow_steps[num_flow_steps++] = &ux_sign_msg_reject_step;
-    flow_steps[num_flow_steps++] = FLOW_END_STEP;
-
-    ux_flow_init(0, flow_steps, NULL);
+    start_sign_offchain_message_ui(is_ascii, num_summary_steps);
 
     *flags |= IO_ASYNCH_REPLY;
 }
