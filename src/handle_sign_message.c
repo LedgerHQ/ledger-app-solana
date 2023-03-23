@@ -11,7 +11,6 @@
 
 #include "handle_sign_message.h"
 
-
 static int scan_header_for_signer(const uint32_t *derivation_path,
                                   uint32_t derivation_path_length,
                                   size_t *signer_index,

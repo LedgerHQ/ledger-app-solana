@@ -55,7 +55,7 @@ int read_derivation_path(const uint8_t *data_buffer,
 
 uint8_t set_result_sign_message(void);
 
-#endif //_UTILS_H_
+#endif  //_UTILS_H_
 
 // Outdated ?
 #ifdef TEST

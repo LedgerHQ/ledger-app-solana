@@ -56,8 +56,7 @@ UX_STEP_CB(ux_reject_step,
            });
 
 #define MAX_FLOW_STEPS_ONCHAIN                             \
-    (MAX_TRANSACTION_SUMMARY_ITEMS                         \
-     + 1                               /* approve */       \
+    (MAX_TRANSACTION_SUMMARY_ITEMS + 1 /* approve */       \
      + 1                               /* reject */        \
      + 1                               /* FLOW_END_STEP */ \
     )
@@ -77,11 +76,10 @@ else if utf8:
 if ascii:
 - message text
 */
-#define MAX_FLOW_STEPS_OFFCHAIN                            \
-    (7                                                     \
-     + 1                               /* approve */       \
-     + 1                               /* reject */        \
-     + 1                               /* FLOW_END_STEP */ \
+#define MAX_FLOW_STEPS_OFFCHAIN \
+    (7 + 1 /* approve */        \
+     + 1   /* reject */         \
+     + 1   /* FLOW_END_STEP */  \
     )
 static ux_flow_step_t const *flow_steps[MAX(MAX_FLOW_STEPS_ONCHAIN, MAX_FLOW_STEPS_OFFCHAIN)];
 

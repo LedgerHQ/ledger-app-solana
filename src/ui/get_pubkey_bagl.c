@@ -48,7 +48,6 @@ UX_FLOW(ux_display_public_flow,
         &ux_display_public_flow_6_step,
         &ux_display_public_flow_7_step);
 
-
 void ui_get_public_key(void) {
     ux_flow_init(0, ux_display_public_flow, NULL);
 }
