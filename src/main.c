@@ -16,7 +16,7 @@
  ********************************************************************************/
 
 #include "utils.h"
-#include "getPubkey.h"
+#include "handle_get_pubkey.h"
 #include "signMessage.h"
 #include "signOffchainMessage.h"
 #include "apdu.h"

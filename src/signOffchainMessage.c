@@ -1,5 +1,4 @@
 #include "io.h"
-#include "getPubkey.h"
 #include "os.h"
 #include "ux.h"
 #include "cx.h"
