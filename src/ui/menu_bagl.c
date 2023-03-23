@@ -1,13 +1,16 @@
+#ifdef HAVE_BAGL
+
 #include "menu.h"
 #include "os.h"
+#include "glyphs.h"
 
 void display_settings(void);
 void switch_allow_blind_sign_data(void);
 void switch_pubkey_display_data(void);
 
 //////////////////////////////////////////////////////////////////////
-const char* settings_submenu_getter(unsigned int idx);
-void settings_submenu_selector(unsigned int idx);
+static const char* settings_submenu_getter(unsigned int idx);
+static void settings_submenu_selector(unsigned int idx);
 static const char* allow_blind_sign_data_getter(unsigned int idx);
 static void allow_blind_sign_data_selector(unsigned int idx);
 static const char* pubkey_display_data_getter(unsigned int idx);
@@ -26,7 +29,7 @@ enum SettingsMenuOption {
     SettingsMenuOptionBack
 };
 
-unsigned int settings_submenu_option_index(enum SettingsMenuOption settings_menu_option) {
+static unsigned int settings_submenu_option_index(enum SettingsMenuOption settings_menu_option) {
     switch (settings_menu_option) {
         case SettingsMenuOptionAllowBlindSign:
         case SettingsMenuOptionPubkeyLength:
@@ -45,14 +48,14 @@ const char* const settings_submenu_getter_values[] = {
     "Back",
 };
 
-const char* settings_submenu_getter(unsigned int idx) {
+static const char* settings_submenu_getter(unsigned int idx) {
     if (idx < ARRAYLEN(settings_submenu_getter_values)) {
         return settings_submenu_getter_values[idx];
     }
     return NULL;
 }
 
-void settings_submenu_selector(unsigned int idx) {
+static void settings_submenu_selector(unsigned int idx) {
     switch (idx) {
         case 0:
             ux_menulist_init_select(0,
@@ -100,7 +103,7 @@ static const char* allow_blind_sign_data_getter(unsigned int idx) {
     return NULL;
 }
 
-void allow_blind_sign_data_selector(unsigned int idx) {
+static void allow_blind_sign_data_selector(unsigned int idx) {
     switch (idx) {
         case 0:
             allow_blind_sign_data_change(BlindSignDisabled);
@@ -118,7 +121,7 @@ void allow_blind_sign_data_selector(unsigned int idx) {
 //////////////////////////////////////////////////////////////////////////////////////
 // Pubkey display submenu
 
-void pubkey_display_data_change(enum PubkeyDisplay pubkey_display) {
+static void pubkey_display_data_change(enum PubkeyDisplay pubkey_display) {
     uint8_t value;
     switch (pubkey_display) {
         case PubkeyDisplayLong:
@@ -156,7 +159,7 @@ static void pubkey_display_data_selector(unsigned int idx) {
 //////////////////////////////////////////////////////////////////////////////////////
 // Display mode submenu
 
-void display_mode_data_change(enum DisplayMode display_mode) {
+static void display_mode_data_change(enum DisplayMode display_mode) {
     uint8_t value;
     switch (display_mode) {
         case DisplayModeUser:
@@ -192,10 +195,11 @@ static void display_mode_data_selector(unsigned int idx) {
 }
 
 //////////////////////////////////////////////////////////////////////
+
 UX_STEP_NOCB(ux_idle_flow_1_step,
              pnn,
              {
-                 &C_solana_logo,
+                 &C_icon_solana_16x16,
                  "Application",
                  "is ready",
              });
@@ -226,6 +230,8 @@ UX_FLOW(ux_idle_flow,
         &ux_idle_flow_4_step,
         FLOW_LOOP);
 
+//////////////////////////////////////////////////////////////////////
+
 void ui_idle(void) {
     // reserve a display stack slot if none yet
     if (G_ux.stack_count == 0) {
@@ -233,3 +239,5 @@ void ui_idle(void) {
     }
     ux_flow_init(0, ux_idle_flow, NULL);
 }
+
+#endif
