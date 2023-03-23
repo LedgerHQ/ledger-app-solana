@@ -12,37 +12,6 @@
 #include "handle_sign_message.h"
 
 
-uint8_t set_result_sign_message(void) {
-    uint8_t signature[SIGNATURE_LENGTH];
-    cx_ecfp_private_key_t privateKey;
-    BEGIN_TRY {
-        TRY {
-            get_private_key_with_seed(&privateKey,
-                                      G_command.derivation_path,
-                                      G_command.derivation_path_length);
-            cx_eddsa_sign(&privateKey,
-                          CX_LAST,
-                          CX_SHA512,
-                          G_command.message,
-                          G_command.message_length,
-                          NULL,
-                          0,
-                          signature,
-                          SIGNATURE_LENGTH,
-                          NULL);
-            memcpy(G_io_apdu_buffer, signature, SIGNATURE_LENGTH);
-        }
-        CATCH_OTHER(e) {
-            THROW(e);
-        }
-        FINALLY {
-            MEMCLEAR(privateKey);
-        }
-    }
-    END_TRY;
-    return SIGNATURE_LENGTH;
-}
-
 static int scan_header_for_signer(const uint32_t *derivation_path,
                                   uint32_t derivation_path_length,
                                   size_t *signer_index,

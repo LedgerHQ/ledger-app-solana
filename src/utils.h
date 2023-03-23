@@ -7,6 +7,8 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
+#define ARRAY_COUNT(array) (sizeof(array) / sizeof(array[0]))
+
 // Marker flag for DEPRECATED ADPU exchange format
 #define DATA_HAS_LENGTH_PREFIX (1 << 15)
 
@@ -51,54 +53,11 @@ int read_derivation_path(const uint8_t *data_buffer,
                          uint32_t *derivation_path,
                          uint32_t *derivation_path_length);
 
+uint8_t set_result_sign_message(void);
 
-// type            userid    x    y   w    h  str rad fill      fg        bg      fid iid  txt
-// touchparams...       ]
-#define UI_BUTTONS                                                                               \
-    {{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF, 0, 0},           \
-     NULL,                                                                                       \
-     0,                                                                                          \
-     0,                                                                                          \
-     0,                                                                                          \
-     NULL,                                                                                       \
-     NULL,                                                                                       \
-     NULL},                                                                                      \
-        {{BAGL_ICON, 0x00, 3, 12, 7, 7, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_CROSS},  \
-         NULL,                                                                                   \
-         0,                                                                                      \
-         0,                                                                                      \
-         0,                                                                                      \
-         NULL,                                                                                   \
-         NULL,                                                                                   \
-         NULL},                                                                                  \
-    {                                                                                            \
-        {BAGL_ICON, 0x00, 117, 13, 8, 6, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_CHECK}, \
-            NULL, 0, 0, 0, NULL, NULL, NULL                                                      \
-    }
+#endif //_UTILS_H_
 
-#define UI_FIRST  1
-#define UI_SECOND 0
-
-#define UI_LABELINE(userId, text, isFirst, font, horizontalScrollSpeed) \
-    {                                                                   \
-        {BAGL_LABELINE,                                                 \
-         (userId),                                                      \
-         23,                                                            \
-         (isFirst) ? 12 : 26,                                           \
-         82,                                                            \
-         12,                                                            \
-         (horizontalScrollSpeed) ? BAGL_STROKE_FLAG_ONESHOT | 10 : 0,   \
-         0,                                                             \
-         0,                                                             \
-         0xFFFFFF,                                                      \
-         0x000000,                                                      \
-         (font) | BAGL_FONT_ALIGNMENT_CENTER,                           \
-         horizontalScrollSpeed},                                        \
-            (text), 0, 0, 0, NULL, NULL, NULL                           \
-    }
-
-#endif
-
+// Outdated ?
 #ifdef TEST
 #include <stdio.h>
 #define THROW(code)                \

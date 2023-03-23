@@ -19,7 +19,7 @@ static Pubkey G_publicKey;
  * Checks if data is in UTF-8 format.
  * Adapted from: https://www.cl.cam.ac.uk/~mgk25/ucs/utf8_check.c
  */
-bool is_data_utf8(const uint8_t *data, size_t length) {
+static bool is_data_utf8(const uint8_t *data, size_t length) {
     if (!data) {
         return false;
     }
@@ -77,37 +77,6 @@ static bool is_data_ascii(const uint8_t *data, size_t length) {
         }
     }
     return true;
-}
-
-static uint8_t set_result_sign_message() {
-    uint8_t signature[SIGNATURE_LENGTH];
-    cx_ecfp_private_key_t privateKey;
-    BEGIN_TRY {
-        TRY {
-            get_private_key_with_seed(&privateKey,
-                                      G_command.derivation_path,
-                                      G_command.derivation_path_length);
-            cx_eddsa_sign(&privateKey,
-                          CX_LAST,
-                          CX_SHA512,
-                          G_command.message,
-                          G_command.message_length,
-                          NULL,
-                          0,
-                          signature,
-                          SIGNATURE_LENGTH,
-                          NULL);
-            memcpy(G_io_apdu_buffer, signature, SIGNATURE_LENGTH);
-        }
-        CATCH_OTHER(e) {
-            THROW(e);
-        }
-        FINALLY {
-            MEMCLEAR(privateKey);
-        }
-    }
-    END_TRY;
-    return SIGNATURE_LENGTH;
 }
 
 //////////////////////////////////////////////////////////////////////
