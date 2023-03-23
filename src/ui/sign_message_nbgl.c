@@ -17,7 +17,6 @@
 #include "handle_sign_message.h"
 #include "handle_sign_offchain_message.h"
 
-
 // Layout of the review flow
 static nbgl_layoutTagValueList_t layout;
 // Used by NBGL to display the reference the pair number N
@@ -67,7 +66,9 @@ static nbgl_layoutTagValue_t *get_single_action_review_pair(uint8_t index) {
     // Final step is special for ASCII messages
     if (index == transaction_steps_number - 1 && last_step_is_ascii) {
         strlcpy(slot->title, "Message", sizeof(slot->title));
-        strlcpy(slot->text, (const char *) G_command.message + OFFCHAIN_MESSAGE_HEADER_LENGTH, sizeof(slot->text));
+        strlcpy(slot->text,
+                (const char *) G_command.message + OFFCHAIN_MESSAGE_HEADER_LENGTH,
+                sizeof(slot->text));
     } else {
         enum DisplayFlags flags = DisplayFlagNone;
         if (N_storage.settings.pubkey_display == PubkeyDisplayLong) {
@@ -94,7 +95,10 @@ static void start_review(void) {
     layout.startIndex = 0;
     layout.nbPairs = transaction_steps_number;
 
-    nbgl_useCaseStaticReview(&layout, &review_final_long_press, "Reject message", review_final_callback);
+    nbgl_useCaseStaticReview(&layout,
+                             &review_final_long_press,
+                             "Reject message",
+                             review_final_callback);
 }
 
 void start_sign_tx_ui(size_t num_summary_steps) {

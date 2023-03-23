@@ -24,7 +24,6 @@
 #include "nbgl_use_case.h"
 #include "ui_api.h"
 
-
 static void callback_match(bool match) {
     if (match) {
         sendResponse(set_result_get_pubkey(), true, false);

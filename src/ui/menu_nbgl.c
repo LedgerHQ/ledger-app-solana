@@ -70,12 +70,17 @@ static void settings_controls_callback(int token, uint8_t index) {
         case BLIND_SIGNING_TOKEN:
             G_switches[BLIND_SIGNING_IDX].initState = !(G_switches[BLIND_SIGNING_IDX].initState);
             new_setting = (G_switches[BLIND_SIGNING_IDX].initState == ON_STATE);
-            nvm_write((void*) &N_storage.settings.allow_blind_sign, &new_setting, sizeof(new_setting));
+            nvm_write((void*) &N_storage.settings.allow_blind_sign,
+                      &new_setting,
+                      sizeof(new_setting));
             break;
         case PUBLIC_KEY_LENGTH_TOKEN:
-            G_switches[PUBLIC_KEY_LENGTH_IDX].initState = !(G_switches[PUBLIC_KEY_LENGTH_IDX].initState);
+            G_switches[PUBLIC_KEY_LENGTH_IDX].initState =
+                !(G_switches[PUBLIC_KEY_LENGTH_IDX].initState);
             new_setting = (G_switches[PUBLIC_KEY_LENGTH_IDX].initState == ON_STATE);
-            nvm_write((void*) &N_storage.settings.pubkey_display, &new_setting, sizeof(new_setting));
+            nvm_write((void*) &N_storage.settings.pubkey_display,
+                      &new_setting,
+                      sizeof(new_setting));
             break;
         case DISPLAY_MODE_TOKEN:
             G_switches[DISPLAY_MODE_IDX].initState = !(G_switches[DISPLAY_MODE_IDX].initState);
@@ -128,7 +133,12 @@ static void ui_menu_settings(void) {
 }
 
 void ui_idle(void) {
-    nbgl_useCaseHome(APPNAME, &C_icon_solana_64x64, "This app confirms actions on\nthe " APPNAME " network.", true, ui_menu_settings, quit_app_callback);
+    nbgl_useCaseHome(APPNAME,
+                     &C_icon_solana_64x64,
+                     "This app confirms actions on\nthe " APPNAME " network.",
+                     true,
+                     ui_menu_settings,
+                     quit_app_callback);
 }
 
 #endif
