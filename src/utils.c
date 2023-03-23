@@ -123,29 +123,3 @@ int read_derivation_path(const uint8_t *data_buffer,
     return 0;
 }
 
-void sendResponse(uint8_t tx, bool approve, bool display_menu) {
-    G_io_apdu_buffer[tx++] = approve ? 0x90 : 0x69;
-    G_io_apdu_buffer[tx++] = approve ? 0x00 : 0x85;
-    // Send back the response, do not restart the event loop
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
-    if (display_menu) {
-        // Display back the original UX
-        ui_idle();
-    }
-}
-
-unsigned int ui_prepro(const bagl_element_t *element) {
-    unsigned int display = 1;
-    if (element->component.userid > 0) {
-        display = (ux_step == element->component.userid - 1);
-        if (display) {
-            if (element->component.userid == 1) {
-                UX_CALLBACK_SET_INTERVAL(2000);
-            } else {
-                UX_CALLBACK_SET_INTERVAL(
-                    MAX(3000, 1000 + bagl_label_roundtrip_duration_ms(element, 7)));
-            }
-        }
-    }
-    return display;
-}

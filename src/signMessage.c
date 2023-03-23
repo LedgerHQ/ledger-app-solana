@@ -1,5 +1,6 @@
 #include "getPubkey.h"
 #include "os.h"
+#include "io.h"
 #include "ux.h"
 #include "cx.h"
 #include "menu.h"

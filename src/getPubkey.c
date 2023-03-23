@@ -1,6 +1,7 @@
 #include "apdu.h"
 #include "getPubkey.h"
 #include "os.h"
+#include "io.h"
 #include "ux.h"
 #include "utils.h"
 #include "sol/printer.h"

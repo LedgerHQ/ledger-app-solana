@@ -19,8 +19,6 @@ typedef enum rlpTxType {
     TX_FEE
 } rlpTxType;
 
-unsigned int ui_prepro(const bagl_element_t *element);
-
 void get_public_key(uint8_t *publicKeyArray, const uint32_t *derivationPath, size_t pathLength);
 
 uint32_t readUint32BE(uint8_t *buffer);
@@ -53,7 +51,6 @@ int read_derivation_path(const uint8_t *data_buffer,
                          uint32_t *derivation_path,
                          uint32_t *derivation_path_length);
 
-void sendResponse(uint8_t tx, bool approve, bool display_menu);
 
 // type            userid    x    y   w    h  str rad fill      fg        bg      fid iid  txt
 // touchparams...       ]
