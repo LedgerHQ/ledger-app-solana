@@ -5,7 +5,9 @@
 #include "ux.h"
 #include "os_io_seproxyhal.h"
 
+#ifdef HAVE_BAGL
 void io_seproxyhal_display(const bagl_element_t *element);
+#endif  // HAVE_BAGL
 
 /**
  * IO callback called when an interrupt based channel has received

@@ -177,7 +177,7 @@ void nv_app_state_init() {
     if (N_storage.initialized != 0x01) {
         internalStorage_t storage;
         storage.settings.allow_blind_sign = BlindSignDisabled;
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX)
         storage.settings.pubkey_display = PubkeyDisplayLong;
 #else
         storage.settings.pubkey_display = PubkeyDisplayShort;
