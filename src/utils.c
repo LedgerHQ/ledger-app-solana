@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "utils.h"
-#include "menu.h"
 
 void get_public_key(uint8_t *publicKeyArray, const uint32_t *derivationPath, size_t pathLength) {
     cx_ecfp_private_key_t privateKey;

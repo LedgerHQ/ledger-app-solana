@@ -20,7 +20,7 @@
 #include "handle_sign_message.h"
 #include "handle_sign_offchain_message.h"
 #include "apdu.h"
-#include "menu.h"
+#include "ui_api.h"
 
 // Swap feature
 #include "swap_lib_calls.h"

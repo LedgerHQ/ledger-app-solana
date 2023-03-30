@@ -2,7 +2,6 @@
 #include "os.h"
 #include "ux.h"
 #include "cx.h"
-#include "menu.h"
 #include "utils.h"
 #include "sol/parser.h"
 #include "sol/printer.h"
@@ -12,7 +11,7 @@
 #include "globals.h"
 #include "apdu.h"
 #include "handle_sign_offchain_message.h"
-
+#include "ui_api.h"
 
 // Store locally the derived public key content
 static Pubkey G_publicKey;

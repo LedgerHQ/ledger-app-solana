@@ -12,5 +12,3 @@ void reset_getpubkey_globals(void);
 void handle_get_pubkey(volatile unsigned int *flags, volatile unsigned int *tx);
 
 uint8_t set_result_get_pubkey(void);
-
-void ui_get_public_key(void);

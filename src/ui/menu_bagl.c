@@ -1,8 +1,10 @@
 #ifdef HAVE_BAGL
 
-#include "menu.h"
+#include "ux.h"
 #include "os.h"
+#include "globals.h"
 #include "glyphs.h"
+#include "ui_api.h"
 
 void display_settings(void);
 void switch_allow_blind_sign_data(void);

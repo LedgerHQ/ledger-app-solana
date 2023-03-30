@@ -22,12 +22,12 @@
 #include "ux.h"
 
 #include "apdu.h"
-#include "menu.h"
+#include "ui_api.h"
 #include "io.h"
 
 // override point, but nothing more to do
 void io_seproxyhal_display(const bagl_element_t *element) {
-    io_seproxyhal_display_default((bagl_element_t *) element);
+    io_seproxyhal_display_default(element);
 }
 
 uint8_t io_event(uint8_t channel) {

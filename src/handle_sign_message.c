@@ -1,5 +1,4 @@
 #include "io.h"
-#include "menu.h"
 #include "utils.h"
 #include "handle_swap_sign_transaction.h"
 
@@ -10,6 +9,7 @@
 #include "sol/transaction_summary.h"
 
 #include "handle_sign_message.h"
+#include "ui_api.h"
 
 static int scan_header_for_signer(const uint32_t *derivation_path,
                                   uint32_t derivation_path_length,
