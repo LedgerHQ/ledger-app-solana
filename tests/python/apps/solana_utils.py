@@ -118,9 +118,9 @@ def _navigation_helper(navigator, device_name: str, accept: bool, snapshots_name
         navigate_instruction = NavInsID.USE_CASE_REVIEW_TAP
         text = "Hold to sign"
         if accept:
-            validation_instructions = [NavInsID.USE_CASE_REVIEW_CONFIRM]
+            validation_instructions = [NavInsID.USE_CASE_REVIEW_CONFIRM, NavInsID.USE_CASE_STATUS_DISMISS]
         else:
-            validation_instructions = [NavInsID.USE_CASE_REVIEW_REJECT, NavInsID.USE_CASE_CHOICE_CONFIRM]
+            validation_instructions = [NavInsID.USE_CASE_REVIEW_REJECT, NavInsID.USE_CASE_CHOICE_CONFIRM, NavInsID.USE_CASE_STATUS_DISMISS]
 
 
     navigator.navigate_until_text_and_compare(navigate_instruction,

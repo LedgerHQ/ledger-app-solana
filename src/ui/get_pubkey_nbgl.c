@@ -24,18 +24,37 @@
 #include "nbgl_use_case.h"
 #include "ui_api.h"
 
-static void callback_match(bool match) {
-    if (match) {
-        sendResponse(set_result_get_pubkey(), true, false);
-        nbgl_useCaseStatus("ADDRESS\nVERIFIED", true, ui_idle);
+static void confirm_address_approval(void) {
+    // display a success status page and go back to main
+    sendResponse(set_result_get_pubkey(), true, false);
+    nbgl_useCaseStatus("ADDRESS\nVERIFIED", true, ui_idle);
+}
+
+static void confirm_address_rejection(void) {
+    // display a status page and go back to main
+    sendResponse(0, false, false);
+    nbgl_useCaseStatus("Address verification\ncancelled", false, ui_idle);
+}
+
+static void review_choice(bool confirm) {
+    if (confirm) {
+        confirm_address_approval();
     } else {
-        sendResponse(0, false, false);
-        nbgl_useCaseStatus("Address verification\ncancelled", false, ui_idle);
+        confirm_address_rejection();
     }
 }
 
+static void continue_review(void) {
+    nbgl_useCaseAddressConfirmation(G_publicKeyStr, review_choice);
+}
+
 void ui_get_public_key(void) {
-    nbgl_useCaseAddressConfirmation(G_publicKeyStr, callback_match);
+    nbgl_useCaseReviewStart(&C_icon_solana_64x64,
+                            "Verify Solana\naddress",
+                            NULL,
+                            "Cancel",
+                            continue_review,
+                            confirm_address_rejection);
 }
 
 #endif

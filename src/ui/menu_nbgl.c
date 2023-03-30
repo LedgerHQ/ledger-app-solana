@@ -48,14 +48,30 @@ enum {
 #define SETTINGS_PAGE_NUMBER 2
 static bool settings_nav_callback(uint8_t page, nbgl_pageContent_t* content) {
     if (page == 0) {
+        // Read again the NVM as the value might have changed following a user touch
+        if (N_storage.settings.allow_blind_sign == BlindSignDisabled) {
+            G_switches[BLIND_SIGNING_IDX].initState = OFF_STATE;
+        } else {
+            G_switches[BLIND_SIGNING_IDX].initState = ON_STATE;
+        }
+        if (N_storage.settings.pubkey_display == PubkeyDisplayLong) {
+            G_switches[PUBLIC_KEY_LENGTH_IDX].initState = OFF_STATE;
+        } else {
+            G_switches[PUBLIC_KEY_LENGTH_IDX].initState = ON_STATE;
+        }
+        if (N_storage.settings.display_mode == DisplayModeUser) {
+            G_switches[DISPLAY_MODE_IDX].initState = OFF_STATE;
+        } else {
+            G_switches[DISPLAY_MODE_IDX].initState = ON_STATE;
+        }
         content->type = SWITCHES_LIST;
         content->switchesList.nbSwitches = NB_SETTINGS;
-        content->switchesList.switches = (nbgl_layoutSwitch_t*) G_switches;
+        content->switchesList.switches = G_switches;
     } else if (page == 1) {
         content->type = INFOS_LIST;
         content->infosList.nbInfos = ARRAY_COUNT(info_types);
-        content->infosList.infoTypes = (const char**) info_types;
-        content->infosList.infoContents = (const char**) info_contents;
+        content->infosList.infoTypes = info_types;
+        content->infosList.infoContents = info_contents;
     } else {
         return false;
     }
@@ -68,23 +84,22 @@ static void settings_controls_callback(int token, uint8_t index) {
     uint8_t new_setting;
     switch (token) {
         case BLIND_SIGNING_TOKEN:
-            G_switches[BLIND_SIGNING_IDX].initState = !(G_switches[BLIND_SIGNING_IDX].initState);
-            new_setting = (G_switches[BLIND_SIGNING_IDX].initState == ON_STATE);
+            // Write in NVM the opposit of what the current toggle is
+            new_setting = (G_switches[BLIND_SIGNING_IDX].initState != ON_STATE);
             nvm_write((void*) &N_storage.settings.allow_blind_sign,
                       &new_setting,
                       sizeof(new_setting));
             break;
         case PUBLIC_KEY_LENGTH_TOKEN:
-            G_switches[PUBLIC_KEY_LENGTH_IDX].initState =
-                !(G_switches[PUBLIC_KEY_LENGTH_IDX].initState);
-            new_setting = (G_switches[PUBLIC_KEY_LENGTH_IDX].initState == ON_STATE);
+            // Write in NVM the opposit of what the current toggle is
+            new_setting = (G_switches[PUBLIC_KEY_LENGTH_IDX].initState != ON_STATE);
             nvm_write((void*) &N_storage.settings.pubkey_display,
                       &new_setting,
                       sizeof(new_setting));
             break;
         case DISPLAY_MODE_TOKEN:
-            G_switches[DISPLAY_MODE_IDX].initState = !(G_switches[DISPLAY_MODE_IDX].initState);
-            new_setting = (G_switches[DISPLAY_MODE_IDX].initState == ON_STATE);
+            // Write in NVM the opposit of what the current toggle is
+            new_setting = (G_switches[DISPLAY_MODE_IDX].initState != ON_STATE);
             nvm_write((void*) &N_storage.settings.display_mode, &new_setting, sizeof(new_setting));
             break;
         default:
@@ -98,31 +113,17 @@ static void ui_menu_settings(void) {
     G_switches[BLIND_SIGNING_IDX].subText = "Enable blind signing";
     G_switches[BLIND_SIGNING_IDX].token = BLIND_SIGNING_TOKEN;
     G_switches[BLIND_SIGNING_IDX].tuneId = TUNE_TAP_CASUAL;
-    if (N_storage.settings.allow_blind_sign == BlindSignDisabled) {
-        G_switches[BLIND_SIGNING_IDX].initState = OFF_STATE;
-    } else {
-        G_switches[BLIND_SIGNING_IDX].initState = ON_STATE;
-    }
 
     G_switches[PUBLIC_KEY_LENGTH_IDX].text = "Public key length";
     G_switches[PUBLIC_KEY_LENGTH_IDX].subText = "Display short public keys";
     G_switches[PUBLIC_KEY_LENGTH_IDX].token = PUBLIC_KEY_LENGTH_TOKEN;
     G_switches[PUBLIC_KEY_LENGTH_IDX].tuneId = TUNE_TAP_CASUAL;
-    if (N_storage.settings.pubkey_display == PubkeyDisplayLong) {
-        G_switches[PUBLIC_KEY_LENGTH_IDX].initState = OFF_STATE;
-    } else {
-        G_switches[PUBLIC_KEY_LENGTH_IDX].initState = ON_STATE;
-    }
 
     G_switches[DISPLAY_MODE_IDX].text = "Display mode";
     G_switches[DISPLAY_MODE_IDX].subText = "Use Expert display mode";
     G_switches[DISPLAY_MODE_IDX].token = DISPLAY_MODE_TOKEN;
     G_switches[DISPLAY_MODE_IDX].tuneId = TUNE_TAP_CASUAL;
-    if (N_storage.settings.display_mode == DisplayModeUser) {
-        G_switches[DISPLAY_MODE_IDX].initState = OFF_STATE;
-    } else {
-        G_switches[DISPLAY_MODE_IDX].initState = ON_STATE;
-    }
+
     nbgl_useCaseSettings(APPNAME " settings",
                          0,
                          SETTINGS_PAGE_NUMBER,

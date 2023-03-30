@@ -36,7 +36,7 @@ static nbgl_pageInfoLongPress_t review_final_long_press;
 // Callback called when the user confirms the message rejection
 static void rejectChoice(void) {
     sendResponse(0, false, false);
-    nbgl_useCaseStatus("message\nrejected", false, ui_idle);
+    nbgl_useCaseStatus("Message\nrejected", false, ui_idle);
 }
 
 // If the user asks for message rejection, ask for confirmation
@@ -62,13 +62,13 @@ static bool last_step_is_ascii;
 // current_pair will point at values stored in displayed_slots[]
 // this will enable displaying at most sizeof(displayed_slots) values simultaneously
 static nbgl_layoutTagValue_t *get_single_action_review_pair(uint8_t index) {
-    dynamic_slot_t *slot = &displayed_slots[index % ARRAY_COUNT(displayed_slots)];
+    uint8_t slot = index % ARRAY_COUNT(displayed_slots);
     // Final step is special for ASCII messages
     if (index == transaction_steps_number - 1 && last_step_is_ascii) {
-        strlcpy(slot->title, "Message", sizeof(slot->title));
-        strlcpy(slot->text,
+        strlcpy(displayed_slots[slot].title, "Message", sizeof(displayed_slots[slot].title));
+        strlcpy(displayed_slots[slot].text,
                 (const char *) G_command.message + OFFCHAIN_MESSAGE_HEADER_LENGTH,
-                sizeof(slot->text));
+                sizeof(displayed_slots[slot].text));
     } else {
         enum DisplayFlags flags = DisplayFlagNone;
         if (N_storage.settings.pubkey_display == PubkeyDisplayLong) {
@@ -77,11 +77,15 @@ static nbgl_layoutTagValue_t *get_single_action_review_pair(uint8_t index) {
         if (transaction_summary_display_item(index, flags)) {
             THROW(ApduReplySolanaSummaryUpdateFailed);
         }
-        memcpy(&slot->title, &G_transaction_summary_title, sizeof(slot->title));
-        memcpy(&slot->text, &G_transaction_summary_text, sizeof(slot->text));
+        memcpy(&displayed_slots[slot].title,
+               &G_transaction_summary_title,
+               sizeof(displayed_slots[slot].title));
+        memcpy(&displayed_slots[slot].text,
+               &G_transaction_summary_text,
+               sizeof(displayed_slots[slot].text));
     }
-    current_pair.item = slot->title;
-    current_pair.value = slot->text;
+    current_pair.item = displayed_slots[slot].title;
+    current_pair.value = displayed_slots[slot].text;
     return &current_pair;
 }
 
