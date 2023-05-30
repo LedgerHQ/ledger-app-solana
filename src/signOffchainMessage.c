@@ -12,6 +12,9 @@
 #include "globals.h"
 #include "apdu.h"
 
+// Store locally the derived public key content
+static Pubkey G_publicKey;
+
 /**
  * Checks if data is in UTF-8 format.
  * Adapted from: https://www.cl.cam.ac.uk/~mgk25/ucs/utf8_check.c
@@ -118,14 +121,14 @@ UX_STEP_NOCB(ux_sign_msg_text_step,
              });
 UX_STEP_CB(ux_sign_msg_approve_step,
            pb,
-           sendResponse(set_result_sign_message(), true),
+           sendResponse(set_result_sign_message(), true, true),
            {
                &C_icon_validate_14,
                "Approve",
            });
 UX_STEP_CB(ux_sign_msg_reject_step,
            pb,
-           sendResponse(0, false),
+           sendResponse(0, false, true),
            {
                &C_icon_crossmark,
                "Reject",
@@ -221,11 +224,10 @@ void handle_sign_offchain_message(volatile unsigned int *flags, volatile unsigne
         summary_item_set_u64(transaction_summary_general_item(), "Size", header.length);
         summary_item_set_hash(transaction_summary_general_item(), "Hash", &G_command.message_hash);
 
-        Pubkey signer_pubkey;
-        get_public_key(signer_pubkey.data,
+        get_public_key(G_publicKey.data,
                        G_command.derivation_path,
                        G_command.derivation_path_length);
-        summary_item_set_pubkey(transaction_summary_general_item(), "Signer", &signer_pubkey);
+        summary_item_set_pubkey(transaction_summary_general_item(), "Signer", &G_publicKey);
     } else if (!is_ascii) {
         summary_item_set_hash(transaction_summary_general_item(), "Hash", &G_command.message_hash);
     }

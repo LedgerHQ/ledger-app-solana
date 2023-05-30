@@ -22,8 +22,16 @@
 #include "apdu.h"
 #include "menu.h"
 
+// Swap feature
+#include "swap_lib_calls.h"
+#include "handle_swap_sign_transaction.h"
+#include "handle_get_printable_amount.h"
+#include "handle_check_address.h"
+
 ApduCommand G_command;
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+volatile bool G_called_from_swap;
+volatile bool G_swap_response_ready;
 
 static void reset_main_globals(void) {
     MEMCLEAR(G_command);
@@ -41,8 +49,10 @@ void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx, int rx)
 
     const int ret = apdu_handle_message(G_io_apdu_buffer, rx, &G_command);
     if (ret != 0) {
+        MEMCLEAR(G_command);
         THROW(ret);
     }
+
     if (G_command.state == ApduStatePayloadInProgress) {
         THROW(ApduReplySuccess);
     }
@@ -96,7 +106,6 @@ void app_main(void) {
     // APDU injection faults.
     for (;;) {
         volatile unsigned short sw = 0;
-
         BEGIN_TRY {
             TRY {
                 rx = tx;
@@ -104,6 +113,12 @@ void app_main(void) {
                          // an error
                 rx = io_exchange(CHANNEL_APDU | flags, rx);
                 flags = 0;
+
+                if (G_called_from_swap && G_swap_response_ready) {
+                    PRINTF("Quitting app started in swap mode\n");
+                    // Quit app, we are in limited mode and our work is done
+                    os_sched_exit(0);
+                }
 
                 // no apdu received, well, reset the session, and reset the
                 // bootloader configuration
@@ -260,13 +275,8 @@ void nv_app_state_init() {
     }
 }
 
-__attribute__((section(".boot"))) int main(void) {
-    // exit critical section
-    __asm volatile("cpsie i");
-
-    // ensure exception will work as planned
-    os_boot();
-
+void coin_main(void) {
+    G_called_from_swap = false;
     for (;;) {
         UX_INIT();
 
@@ -307,5 +317,88 @@ __attribute__((section(".boot"))) int main(void) {
         END_TRY;
     }
     app_exit();
+}
+
+static void start_app_from_lib(void) {
+    G_called_from_swap = true;
+    G_swap_response_ready = false;
+    UX_INIT();
+    io_seproxyhal_init();
+    nv_app_state_init();
+    USB_power(0);
+    USB_power(1);
+#ifdef HAVE_BLE
+    // Erase globals that may inherit values from exchange
+    MEMCLEAR(G_io_asynch_ux_callback);
+    // grab the current plane mode setting
+    G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
+    BLE_power(0, NULL);
+    BLE_power(1, "Nano X");
+#endif  // HAVE_BLE
+    app_main();
+}
+
+static void library_main_helper(libargs_t *args) {
+    check_api_level(CX_COMPAT_APILEVEL);
+    switch (args->command) {
+        case CHECK_ADDRESS:
+            // ensure result is zero if an exception is thrown
+            args->check_address->result = 0;
+            args->check_address->result = handle_check_address(args->check_address);
+            break;
+        case SIGN_TRANSACTION:
+            if (copy_transaction_parameters(args->create_transaction)) {
+                // never returns
+                start_app_from_lib();
+            }
+            break;
+        case GET_PRINTABLE_AMOUNT:
+            handle_get_printable_amount(args->get_printable_amount);
+            break;
+        default:
+            break;
+    }
+}
+
+static void library_main(libargs_t *args) {
+    volatile bool end = false;
+    /* This loop ensures that library_main_helper and os_lib_end are called
+     * within a try context, even if an exception is thrown */
+    while (1) {
+        BEGIN_TRY {
+            TRY {
+                if (!end) {
+                    library_main_helper(args);
+                }
+                os_lib_end();
+            }
+            FINALLY {
+                end = true;
+            }
+        }
+        END_TRY;
+    }
+}
+
+__attribute__((section(".boot"))) int main(int arg0) {
+    // exit critical section
+    __asm volatile("cpsie i");
+
+    // ensure exception will work as planned
+    os_boot();
+
+    if (arg0 == 0) {
+        // called from dashboard as standalone app
+        coin_main();
+    } else {
+        // Called as library from another app
+        libargs_t *args = (libargs_t *) arg0;
+        if (args->id == 0x100) {
+            library_main(args);
+        } else {
+            app_exit();
+        }
+    }
+
     return 0;
 }

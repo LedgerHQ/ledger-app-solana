@@ -7,6 +7,7 @@
 ## 1.3.0
 
 - Add SIGN SOLANA OFF-CHAIN MESSAGE
+- Add compatibility with the Exchange Application to SWAP, FUND, or SELL SOL tokens
 
 ## About
 

@@ -1,10 +1,9 @@
+build
 bin
 debug
 dep
 obj
 dev-env
-src/glyphs.c
-src/glyphs.h
 .idea
 .vscode
 gitignore
@@ -17,5 +16,4 @@ __pycache__
 .pyc
 *~
 
-tests/elfs/
 tests/python/snapshots-tmp/

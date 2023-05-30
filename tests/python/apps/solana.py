@@ -2,8 +2,7 @@ from typing import List, Generator
 from enum import IntEnum
 from contextlib import contextmanager
 
-from ragger.backend import BackendInterface
-from ragger.utils import RAPDU
+from ragger.backend.interface import BackendInterface, RAPDU
 
 
 class INS(IntEnum):
@@ -74,7 +73,7 @@ def _extend_and_serialize_multiple_derivations_paths(derivations_paths: List[byt
 class SolanaClient:
     client: BackendInterface
 
-    def __init__(self, client):
+    def __init__(self, client: BackendInterface):
         self._client = client
 
 
@@ -84,6 +83,14 @@ class SolanaClient:
                                                   derivation_path)
         assert len(public_key.data) == PUBLIC_KEY_LENGTH, "'from' public key size incorrect"
         return public_key.data
+
+
+    @contextmanager
+    def send_public_key_with_confirm(self, derivation_path: bytes) -> bytes:
+        with self._client.exchange_async(CLA, INS.INS_GET_PUBKEY,
+                                         P1_CONFIRM, P2_NONE,
+                                         derivation_path):
+            yield
 
 
     def split_and_prefix_message(self, derivation_path : bytes, message: bytes) -> List[bytes]:
@@ -96,14 +103,15 @@ class SolanaClient:
         return [header + s for s in message_splited]
 
 
-    def send_first_message_batch(self, messages: List[bytes], p1: int) -> RAPDU:
-        self._client.exchange(CLA, INS.INS_SIGN_MESSAGE, p1, P2_MORE, messages[0])
+    def send_first_message_batch(self, ins: INS, messages: List[bytes], p1: int) -> RAPDU:
+        self._client.exchange(CLA, ins, p1, P2_MORE, messages[0])
         for m in messages[1:]:
-            self._client.exchange(CLA, INS.INS_SIGN_MESSAGE, p1, P2_MORE | P2_EXTEND, m)
+            self._client.exchange(CLA, ins, p1, P2_MORE | P2_EXTEND, m)
 
 
     @contextmanager
-    def send_async_sign_message(self,
+    def send_async_sign_request(self,
+                                ins: INS,
                                 derivation_path : bytes,
                                 message: bytes) -> Generator[None, None, None]:
         message_splited_prefixed = self.split_and_prefix_message(derivation_path, message)
@@ -112,35 +120,33 @@ class SolanaClient:
         # Send all chunks with P2_EXTEND except for the first chunk
         if len(message_splited_prefixed) > 1:
             final_p2 = P2_EXTEND
-            self.send_first_message_batch(message_splited_prefixed[:-1], P1_CONFIRM)
+            self.send_first_message_batch(ins, message_splited_prefixed[:-1], P1_CONFIRM)
         else:
             final_p2 = 0
 
         with self._client.exchange_async(CLA,
-                                         INS.INS_SIGN_MESSAGE,
+                                         ins,
                                          P1_CONFIRM,
                                          final_p2,
                                          message_splited_prefixed[-1]):
             yield
 
 
+    @contextmanager
+    def send_async_sign_message(self,
+                                derivation_path : bytes,
+                                message: bytes) -> Generator[None, None, None]:
+        with self.send_async_sign_request(INS.INS_SIGN_MESSAGE, derivation_path, message):
+            yield
+
+
+    @contextmanager
+    def send_async_sign_offchain_message(self,
+                                         derivation_path : bytes,
+                                         message: bytes) -> Generator[None, None, None]:
+        with self.send_async_sign_request(INS.INS_SIGN_OFFCHAIN_MESSAGE, derivation_path, message):
+            yield
+
+
     def get_async_response(self) -> RAPDU:
         return self._client.last_async_response
-
-
-    def send_blind_sign_message(self, derivation_path : bytes, message: bytes) -> RAPDU:
-        message_splited_prefixed = self.split_and_prefix_message(derivation_path, message)
-
-        # Send all chunks with P2_MORE except for the last chunk
-        # Send all chunks with P2_EXTEND except for the first chunk
-        if len(message_splited_prefixed) > 1:
-            final_p2 |= P2_EXTEND
-            self.send_first_message_batch(message_splited_prefixed[:-1], P1_NON_CONFIRM)
-        else:
-            final_p2 = 0
-
-        return self._client.exchange(CLA,
-                                     INS.INS_SIGN_MESSAGE,
-                                     P1_NON_CONFIRM,
-                                     final_p2,
-                                     message_splited_prefixed[-1])

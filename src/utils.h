@@ -53,7 +53,7 @@ int read_derivation_path(const uint8_t *data_buffer,
                          uint32_t *derivation_path,
                          uint32_t *derivation_path_length);
 
-void sendResponse(uint8_t tx, bool approve);
+void sendResponse(uint8_t tx, bool approve, bool display_menu);
 
 // type            userid    x    y   w    h  str rad fill      fg        bg      fid iid  txt
 // touchparams...       ]

@@ -115,3 +115,92 @@ class Message:
         serialized += len(self.compiled_instructions).to_bytes(1, byteorder='little')
         serialized += self.compiled_instructions[0].serialize()
         return serialized
+
+def is_printable_ascii(string: str) -> bool:
+    try:
+        string.decode('ascii')
+        return True
+    except UnicodeDecodeError:
+        return False
+
+def is_utf8(string: str) -> bool:
+    return True
+
+
+PACKET_DATA_SIZE: int = 1280 - 40 - 8
+U16_MAX = 2^16-1
+
+
+SIGNING_DOMAIN: bytes = b"\xffsolana offchain"
+# // Header Length = Signing Domain (16) + Header Version (1)
+BASE_HEADER_LEN: int = len(SIGNING_DOMAIN) + 1;
+
+# Header Length = Message Format (1) + Message Length (2)
+MESSAGE_HEADER_LEN: int = 3;
+# Max length of the OffchainMessage
+MAX_LEN: int = U16_MAX - BASE_HEADER_LEN - MESSAGE_HEADER_LEN;
+# Max Length of the OffchainMessage supported by the Ledger
+MAX_LEN_LEDGER: int = PACKET_DATA_SIZE - BASE_HEADER_LEN - MESSAGE_HEADER_LEN;
+
+class MessageFormat(IntEnum):
+    RestrictedAscii = 0x00
+    LimitedUtf8     = 0x01
+    ExtendedUtf8    = 0x02
+
+class v0_OffchainMessage:
+    format: MessageFormat
+    message: bytes
+
+    def __init__(self, message: bytes):
+        # /// Construct a new OffchainMessage object from the given message
+        if len(message) <= MAX_LEN_LEDGER:
+            if is_printable_ascii(message):
+                self.format = MessageFormat.RestrictedAscii
+            elif is_utf8(message):
+                self.format = MessageFormat.LimitedUtf8
+            else:
+                raise ValueError()
+        elif len(message) <= MAX_LEN:
+            if is_utf8(message):
+                self.format = MessageFormat.ExtendedUtf8
+            else:
+                raise ValueError()
+        else:
+            raise ValueError()
+        self.message = message
+
+    # Serialize the message to bytes, including the full header
+    def serialize(self) -> bytes:
+        # data.reserve(Self::HEADER_LEN.saturating_add(self.message.len()));
+        data: bytes = b""
+        # format
+        data += self.format.to_bytes(1, byteorder='little')
+        # message length
+        data += len(self.message).to_bytes(2, byteorder='little')
+        # message
+        data += self.message
+        return data
+
+
+class OffchainMessage:
+    version: int
+    message: v0_OffchainMessage
+
+    # Construct a new OffchainMessage object from the given version and message
+    def __init__(self, version: int, message: bytes):
+        self.version = version
+        if version == 0:
+            self.message = v0_OffchainMessage(message)
+        else:
+            raise ValueError()
+
+    # Serialize the off-chain message to bytes including full header
+    def serialize(self) -> bytes:
+        data: bytes = b""
+        # serialize signing domain
+        data += SIGNING_DOMAIN
+
+        # serialize version and call version specific serializer
+        data += self.version.to_bytes(1, byteorder='little')
+        data += self.message.serialize()
+        return data

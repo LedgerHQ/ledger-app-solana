@@ -28,14 +28,14 @@ UX_STEP_NOCB(ux_display_public_flow_5_step,
              });
 UX_STEP_CB(ux_display_public_flow_6_step,
            pb,
-           sendResponse(set_result_get_pubkey(), true),
+           sendResponse(set_result_get_pubkey(), true, true),
            {
                &C_icon_validate_14,
                "Approve",
            });
 UX_STEP_CB(ux_display_public_flow_7_step,
            pb,
-           sendResponse(0, false),
+           sendResponse(0, false, true),
            {
                &C_icon_crossmark,
                "Reject",
