@@ -169,6 +169,7 @@ fn test_ledger_sign_transaction_too_big() -> Result<(), RemoteWalletError> {
 }
 
 // This test requires interactive approval of message signing on the ledger.
+#[cfg(feature = "offchain-message-signing")]
 fn test_ledger_sign_offchain_message_ascii() -> Result<(), RemoteWalletError> {
     let (ledger, _ledger_base_pubkey) = get_ledger();
 
@@ -187,6 +188,7 @@ fn test_ledger_sign_offchain_message_ascii() -> Result<(), RemoteWalletError> {
 }
 
 // This test requires interactive approval of message signing on the ledger.
+#[cfg(feature = "offchain-message-signing")]
 fn test_ledger_sign_offchain_message_utf8() -> Result<(), RemoteWalletError> {
     let (ledger, _ledger_base_pubkey) = get_ledger();
 
@@ -1745,8 +1747,11 @@ fn do_run_tests() -> Result<(), RemoteWalletError> {
 
     run!(test_ledger_sign_versioned_transaction);
     run!(test_ledger_sign_versioned_transaction_with_table);
-    run!(test_ledger_sign_offchain_message_ascii);
-    run!(test_ledger_sign_offchain_message_utf8);
+    #[cfg(feature = "offchain-message-signing")]
+    {
+        run!(test_ledger_sign_offchain_message_ascii);
+        run!(test_ledger_sign_offchain_message_utf8);
+    }
     run!(test_ledger_transfer_with_memos);
     run!(test_spl_associated_token_account_create_with_transfer_checked_and_serum_assert_owner);
     run!(test_spl_associated_token_account_create_with_transfer_checked);

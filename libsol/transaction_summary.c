@@ -15,8 +15,14 @@ struct SummaryItem {
         const char* string;
         SizedString sized_string;
         TokenAmount token_amount;
+        const OffchainMessageApplicationDomain* application_domain;
     };
 };
+
+void summary_item_payload_set_u64(struct SummaryItemPayload* item_payload, uint64_t value) {
+    item_payload->kind = SummaryItemU64;
+    item_payload->u64 = value;
+}
 
 void summary_item_set_amount(SummaryItem* item, const char* title, uint64_t value) {
     item->kind = SummaryItemAmount;
@@ -67,8 +73,29 @@ void summary_item_set_sized_string(SummaryItem* item, const char* title, const S
     item->sized_string.string = value->string;
 }
 
+/**
+ * Set the string value of a SummaryItem, but only if the value is not NULL.
+ */
+void summary_item_safe_set_string(SummaryItem* item, const char* title, const char* value) {
+    if(value != NULL){
+        summary_item_set_string(item, title, value);
+    }
+}
+
 void summary_item_set_string(SummaryItem* item, const char* title, const char* value) {
     item->kind = SummaryItemString;
+    item->title = title;
+    item->string = value;
+}
+
+void summary_item_safe_set_extended_string(SummaryItem* item, const char* title, const char* value){
+    if(value != NULL){
+        summary_item_set_extended_string(item, title, value);
+    }
+}
+
+void summary_item_set_extended_string(SummaryItem* item, const char* title, const char* value) {
+    item->kind = SummaryItemExtendedString;
     item->title = title;
     item->string = value;
 }
@@ -79,12 +106,22 @@ void summary_item_set_timestamp(SummaryItem* item, const char* title, int64_t va
     item->i64 = value;
 }
 
+void summary_item_set_offchain_message_application_domain(SummaryItem* item,
+                                                          const char* title,
+                                                          const OffchainMessageApplicationDomain* value) {
+    item->kind = SummaryItemOffchainMessageApplicationDomain;
+    item->title = title;
+    item->application_domain = value;
+}
+
 typedef struct TransactionSummary {
     SummaryItem primary;
     SummaryItem fee_payer;
     SummaryItem nonce_account;
     SummaryItem nonce_authority;
     SummaryItem general[NUM_GENERAL_ITEMS];
+    SummaryItemPayload compute_units_limit;
+    SummaryItemPayload priority_fees;
 } TransactionSummary;
 
 static TransactionSummary G_transaction_summary;
@@ -92,13 +129,38 @@ static TransactionSummary G_transaction_summary;
 char G_transaction_summary_title[TITLE_SIZE];
 char G_transaction_summary_text[TEXT_BUFFER_LENGTH];
 
+char* G_transaction_summary_extended_text;
+
+
 void transaction_summary_reset() {
     explicit_bzero(&G_transaction_summary, sizeof(TransactionSummary));
     explicit_bzero(&G_transaction_summary_title, TITLE_SIZE);
     explicit_bzero(&G_transaction_summary_text, TEXT_BUFFER_LENGTH);
 }
 
+static uint64_t transaction_summary_get_compute_units_limit() {
+    if (G_transaction_summary.compute_units_limit.u64 == 0) {
+        // Prioritization fee is calculated by multiplying this value with compute unit price,
+        // so it cannot be equal to zero
+        G_transaction_summary.compute_units_limit.u64 = DEFAULT_COMPUTE_UNIT_LIMIT;
+    }
+
+    return G_transaction_summary.compute_units_limit.u64;
+}
+
+uint64_t calculate_additional_transaction_fees(){
+    uint64_t unit_price = G_transaction_summary.priority_fees.u64;
+    uint64_t compute_unit_limit = transaction_summary_get_compute_units_limit();
+
+    // Round up integer division: (m+n-1)/n
+    return ((compute_unit_limit * unit_price) + COMPUTE_UNIT_PRICE_DIVIDER -1) / COMPUTE_UNIT_PRICE_DIVIDER;
+}
+
 static bool is_summary_item_used(const SummaryItem* item) {
+    return (item->kind != SummaryItemNone);
+}
+
+static bool is_summary_item_payload_used(const SummaryItemPayload* item) {
     return (item->kind != SummaryItemNone);
 }
 
@@ -109,9 +171,26 @@ static SummaryItem* summary_item_as_unused(SummaryItem* item) {
     return NULL;
 }
 
+static SummaryItemPayload* summary_item_payload_as_unused(SummaryItemPayload* item) {
+    if (!is_summary_item_payload_used(item)) {
+        return item;
+    }
+    return NULL;
+}
+
 SummaryItem* transaction_summary_primary_item() {
     SummaryItem* item = &G_transaction_summary.primary;
     return summary_item_as_unused(item);
+}
+
+SummaryItemPayload* transaction_summary_payload_priority_fees_item() {
+    SummaryItemPayload* item = &G_transaction_summary.priority_fees;
+    return summary_item_payload_as_unused(item);
+}
+
+SummaryItemPayload* transaction_summary_payload_compute_units_limit_item() {
+    SummaryItemPayload* item = &G_transaction_summary.compute_units_limit;
+    return summary_item_payload_as_unused(item);
 }
 
 SummaryItem* transaction_summary_fee_payer_item() {
@@ -129,6 +208,9 @@ SummaryItem* transaction_summary_nonce_authority_item() {
     return summary_item_as_unused(item);
 }
 
+/*
+ * Returns first available unused general item
+ */
 SummaryItem* transaction_summary_general_item() {
     for (size_t i = 0; i < NUM_GENERAL_ITEMS; i++) {
         SummaryItem* item = &G_transaction_summary.general[i];
@@ -139,6 +221,20 @@ SummaryItem* transaction_summary_general_item() {
     return NULL;
 }
 
+/*
+ * Returns number of used general items
+ */
+uint8_t transaction_summary_general_item_count() {
+    uint8_t count = 0;
+    for (size_t i = 0; i < NUM_GENERAL_ITEMS; i++) {
+        SummaryItem* item = &G_transaction_summary.general[i];
+        if (is_summary_item_used(item)) {
+        count++;
+        }
+    }
+    return count;
+}
+
 #define FEE_PAYER_TITLE "Fee payer"
 int transaction_summary_set_fee_payer_pubkey(const Pubkey* pubkey) {
     SummaryItem* item = transaction_summary_fee_payer_item();
@@ -146,6 +242,19 @@ int transaction_summary_set_fee_payer_pubkey(const Pubkey* pubkey) {
     summary_item_set_pubkey(item, FEE_PAYER_TITLE, pubkey);
     return 0;
 }
+
+/*
+ * Supress warning about const qualifier - changes required in ledger's SDK
+ * warning suppression is used on purpose to avoid casting pointers without const qualifier
+ * G_ux.externalText is not modified anywhere
+ */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-qual"
+static void set_extended_string(const char* value){
+    //Set pointer to the temporary buffer, so 'libsol' does not have to include ux API from SDK
+    G_transaction_summary_extended_text = (char*) value;
+}
+#pragma GCC diagnostic pop
 
 static int transaction_summary_update_display_for_item(const SummaryItem* item,
                                                        enum DisplayFlags flags) {
@@ -188,6 +297,9 @@ static int transaction_summary_update_display_for_item(const SummaryItem* item,
                                   G_transaction_summary_text,
                                   TEXT_BUFFER_LENGTH));
             break;
+        case SummaryItemExtendedString:
+            set_extended_string(item->string);
+            break;
         case SummaryItemString:
             print_string(item->string, G_transaction_summary_text, TEXT_BUFFER_LENGTH);
             break;
@@ -196,6 +308,12 @@ static int transaction_summary_update_display_for_item(const SummaryItem* item,
             break;
         case SummaryItemTimestamp:
             BAIL_IF(print_timestamp(item->i64, G_transaction_summary_text, TEXT_BUFFER_LENGTH));
+            break;
+        case SummaryItemOffchainMessageApplicationDomain:
+            BAIL_IF(encode_base58(item->application_domain,
+                                  OFFCHAIN_MESSAGE_APPLICATION_DOMAIN_LENGTH,
+                                  G_transaction_summary_text,
+                                  TEXT_BUFFER_LENGTH));
             break;
     }
     print_string(item->title, G_transaction_summary_title, TITLE_SIZE);

@@ -18,7 +18,12 @@ ifeq ($(COVERAGE),1)
 	CFLAGS += --coverage
 endif
 
-debug_CFLAGS = -g -fsanitize=address -fsanitize=undefined
+# Temporary solution to ignore conditional compilation for nanos
+ifeq ($(TEST_REDUCE_MEMORY),)
+	CFLAGS += -DTEST_MEMORY_EXTENDED
+endif
+
+debug_CFLAGS = -g -O0 -fsanitize=address -fsanitize=undefined
 release_CFLAGS = -O2
 
 libsol_source_files = $(filter-out %_test.c,$(wildcard *.c))

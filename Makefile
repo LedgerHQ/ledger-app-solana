@@ -18,8 +18,8 @@
 ifeq ($(BOLOS_SDK),)
     # `THIS_DIR` must be resolved BEFORE any `include` directives
     THIS_DIR   := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-		TARGET_SDK := $(shell ./util/read-last-sdk)
-		BOLOS_SDK  := ${$(TARGET_SDK)}
+    TARGET_SDK := $(shell ./util/read-last-sdk)
+    BOLOS_SDK  := ${$(TARGET_SDK)}
 endif
 
 ifeq ($(BOLOS_SDK),)
@@ -67,6 +67,17 @@ DEFINES += USB_SEGMENT_SIZE=64
 DEFINES += BLE_SEGMENT_SIZE=32
 DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
 DEFINES += UNUSED\(x\)=\(void\)x
+
+
+# Inject the target name into the build
+# Required in transaction summary to display screens correctly
+ifneq ($(TARGET_NAME),)
+    DEFINES += SDK_$(TARGET_NAME)
+else
+    # Use as default value
+    DEFINES += SDK_TARGET_UNKNOWN
+endif
+
 
 ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_STAX))
     DEFINES += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000 HAVE_BLE_APDU

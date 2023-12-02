@@ -31,6 +31,9 @@ AMOUNT_2_BYTES  = lamports_to_bytes(AMOUNT_2)
 FEES            = sol_to_lamports(0.00000564)
 FEES_BYTES      = lamports_to_bytes(FEES)
 
+COMPUTE_BUDGET_UNIT_LIMIT = 43981
+COMPUTE_BUDGET_UNIT_PRICE = 16
+
 
 ### Proposed foreign and owned addresses ###
 

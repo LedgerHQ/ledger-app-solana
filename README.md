@@ -15,7 +15,7 @@ Current Features:
 ### For building the app
 * [Install Docker](https://docs.docker.com/get-docker/)
 * For Linux hosts, install the Ledger Nano [udev rules](https://github.com/LedgerHQ/udev-rules)
-#### Build the [Ledger App Builder](https://developers.ledger.com/docs/nano-app/build/) Docker image
+#### Build the [Ledger App Builder](https://github.com/LedgerHQ/ledger-app-builder/blob/master/README.md#build-the-container-image) Docker image
 1. Clone the git repository
 ```
 git clone https://github.com/LedgerHQ/ledger-app-builder.git
@@ -32,8 +32,8 @@ git checkout 73c9e07
 ```
 docker build -t ledger-app-builder:73c9e07 .
 ```
-  * If permissions errors are encountered, ensure that your user is in the `docker`
-group and that the session has been restarted
+* If permissions errors are encountered, ensure that your user is in the `docker`
+  group and that the session has been restarted
 
 ### For working with the device
 #### Install Python3 PIP
@@ -81,7 +81,7 @@ git clone --branch 1.0.3 --depth 1 https://github.com/LedgerHQ/nanosplus-secure-
 * Solana [system dependencies](https://github.com/solana-labs/solana/#1-install-rustc-cargo-and-rustfmt)
 
 ## Build
-It is highly recommended that you read and understand the [Ledger App Builder](https://developers.ledger.com/docs/embedded-app/build-app/#2-build-the-application)
+It is highly recommended that you read and understand the [Ledger App Builder](https://github.com/LedgerHQ/ledger-app-builder/blob/master/README.md)
 build process before proceeding.  A convenience wrapper script (`./docker-make`) has been provided for simplicity
 
 `docker-make` manages the current target SDK for you, automatically setting `BOLOS_SDK` to the
@@ -104,7 +104,7 @@ from clean and clean must be run _before_ switching
 ```
 
 ## Working with the device
-Requires that the `BOLOS_SDK` envvar [be set](https://developers.ledger.com/docs/embedded-app/build-app/#b-build-the-application).
+Requires that the `BOLOS_SDK` envvar be set.
 This can be achieved by first [building](#build) for the desired target device.
 ### Load
 ```bash

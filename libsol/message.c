@@ -10,9 +10,23 @@
 #include "vote_instruction.h"
 #include "transaction_printers.h"
 #include "util.h"
+#include "compute_budget_instruction.h"
 #include <string.h>
 
-#define MAX_INSTRUCTIONS 4
+#define MAX_INSTRUCTIONS 6
+
+/**
+ * Decides whenever compute budget instruction data should be included on the device's display
+ * Currently only priority fee and unit limit are used
+ */
+static void handle_compute_budget_instruction_display(InstructionInfo** display_instruction_info,
+                                                      size_t* display_instruction_count,
+                                                      InstructionInfo* info) {
+    if (info->compute_budget.kind == ComputeBudgetChangeUnitPrice || info->compute_budget.kind == ComputeBudgetChangeUnitLimit) {
+        display_instruction_info[*display_instruction_count] = info;
+        (*display_instruction_count)++;
+    }
+}
 
 int process_message_body(const uint8_t* message_body,
                          int message_body_length,
@@ -53,7 +67,7 @@ int process_message_body(const uint8_t* message_body,
                 break;
             }
             case ProgramIdSplMemo: {
-                // SPL Memo only has one instruction and we ignore it for now
+                // SPL Memo only has one instruction, and we ignore it for now
                 info->kind = program_id;
                 break;
             }
@@ -80,6 +94,12 @@ int process_message_body(const uint8_t* message_body,
                 }
                 break;
             }
+            case ProgramIdComputeBudget: {
+                if (parse_compute_budget_instructions(&instruction, &info->compute_budget) == 0) {
+                    info->kind = program_id;
+                }
+                break;
+            }
             case ProgramIdUnknown:
                 break;
         }
@@ -91,6 +111,11 @@ int process_message_body(const uint8_t* message_body,
             case ProgramIdVote:
             case ProgramIdUnknown:
                 display_instruction_info[display_instruction_count++] = info;
+                break;
+            case ProgramIdComputeBudget:
+                handle_compute_budget_instruction_display(display_instruction_info,
+                                                          &display_instruction_count,
+                                                          info);
                 break;
             // Ignored instructions
             case ProgramIdSerumAssertOwner:
@@ -108,7 +133,7 @@ int process_message_body(const uint8_t* message_body,
     // Ensure we've consumed the entire message body
     BAIL_IF(!parser_is_empty(&parser));
 
-    // If we don't know about all of the instructions, bail
+    // If we don't know about all the instructions, bail
     for (size_t i = 0; i < instruction_count; i++) {
         BAIL_IF(instruction_info[i].kind == ProgramIdUnknown);
     }

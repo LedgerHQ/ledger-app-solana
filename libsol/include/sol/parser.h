@@ -59,15 +59,27 @@ typedef struct MessageHeader {
     size_t instructions_length;
 } MessageHeader;
 
+//@TODO move to offchain message sign .h
+#define OFFCHAIN_MESSAGE_APPLICATION_DOMAIN_LENGTH 32
+typedef struct OffchainMessageApplicationDomain {
+    uint8_t data[OFFCHAIN_MESSAGE_APPLICATION_DOMAIN_LENGTH];
+} OffchainMessageApplicationDomain;
+
 typedef struct OffchainMessageHeader {
     uint8_t version;
+    const OffchainMessageApplicationDomain* application_domain;
     uint8_t format;
+    size_t signers_length;
+    const Pubkey* signers;
     uint16_t length;
 } OffchainMessageHeader;
 
 static inline int parser_is_empty(Parser* parser) {
     return parser->buffer_length == 0;
 }
+
+void advance(Parser* parser, size_t num);
+int check_buffer_length(Parser* parser, size_t num);
 
 int parse_u8(Parser* parser, uint8_t* value);
 
@@ -87,12 +99,17 @@ int parse_pubkey(Parser* parser, const Pubkey** pubkey);
 
 int parse_pubkeys_header(Parser* parser, PubkeysHeader* header);
 
-int parse_pubkeys(Parser* parser, PubkeysHeader* header, const Pubkey** pubkeys);
+int parse_pubkeys(Parser* parser, size_t num_pubkeys, const Pubkey** pubkeys);
 
 int parse_blockhash(Parser* parser, const Hash** hash);
 #define parse_blockhash parse_hash
 
 int parse_message_header(Parser* parser, MessageHeader* header);
+
+int parse_offchain_message_application_domain(
+    Parser* parser,
+    const OffchainMessageApplicationDomain** app_domain
+);
 
 int parse_offchain_message_header(Parser* parser, OffchainMessageHeader* header);
 

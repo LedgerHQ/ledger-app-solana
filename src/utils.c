@@ -1,6 +1,5 @@
 #include "os.h"
 #include "cx.h"
-#include <stdbool.h>
 #include <stdlib.h>
 #include "utils.h"
 
@@ -29,6 +28,17 @@ void get_public_key(uint8_t *publicKeyArray, const uint32_t *derivationPath, siz
     if ((publicKey.W[PUBKEY_LENGTH] & 1) != 0) {
         publicKeyArray[PUBKEY_LENGTH - 1] |= 0x80;
     }
+}
+
+int get_pubkey_index(const Pubkey* needle, const Pubkey* haystack, size_t haystack_len, size_t* index) {
+    for (size_t i = 0; i < haystack_len; ++i) {
+        const Pubkey *current_pubkey = &(haystack[i]);
+        if (memcmp(current_pubkey, needle, PUBKEY_SIZE) == 0) {
+            *index = i;
+            return 0;
+        }
+    }
+    return -1;
 }
 
 uint32_t readUint32BE(uint8_t *buffer) {

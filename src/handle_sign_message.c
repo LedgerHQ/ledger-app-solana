@@ -1,6 +1,6 @@
 #include "io.h"
 #include "utils.h"
-#include "handle_swap_sign_transaction.h"
+#include "swap/handle_swap_sign_transaction.h"
 
 #include "sol/parser.h"
 #include "sol/printer.h"
@@ -15,16 +15,12 @@ static int scan_header_for_signer(const uint32_t *derivation_path,
                                   uint32_t derivation_path_length,
                                   size_t *signer_index,
                                   const MessageHeader *header) {
-    uint8_t signer_pubkey[PUBKEY_SIZE];
-    get_public_key(signer_pubkey, derivation_path, derivation_path_length);
-    for (size_t i = 0; i < header->pubkeys_header.num_required_signatures; ++i) {
-        const Pubkey *current_pubkey = &(header->pubkeys[i]);
-        if (memcmp(current_pubkey, signer_pubkey, PUBKEY_SIZE) == 0) {
-            *signer_index = i;
-            return 0;
-        }
-    }
-    return -1;
+    Pubkey signer_pubkey;
+    get_public_key(signer_pubkey.data, derivation_path, derivation_path_length);
+    return get_pubkey_index(&signer_pubkey,
+                            header->pubkeys,
+                            header->pubkeys_header.num_required_signatures,
+                            signer_index);
 }
 
 void handle_sign_message_parse_message(volatile unsigned int *tx) {
@@ -67,6 +63,7 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
     // Set the transaction summary
     transaction_summary_reset();
     if (process_message_body(parser.buffer, parser.buffer_length, &print_config) != 0) {
+
         // Message not processed, throw if blind signing is not enabled
         if (N_storage.settings.allow_blind_sign == BlindSignEnabled) {
             SummaryItem *item = transaction_summary_primary_item();

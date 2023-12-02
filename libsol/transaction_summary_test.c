@@ -1,4 +1,5 @@
 #include "common_byte_strings.h"
+#include "include/sol/transaction_summary.h"
 #include "transaction_summary.c"
 #include <assert.h>
 #include <stdio.h>
@@ -373,6 +374,59 @@ void test_repro_unrecognized_format_reverse_nav_hash_corruption_bug() {
     assert_transaction_summary_display(primary_title, primary_text);
 }
 
+void test_additional_transaction_fees_unit_price_only(){
+    SummaryItemPayload* item_payload;
+
+    transaction_summary_reset();
+
+    item_payload = transaction_summary_payload_priority_fees_item();
+    summary_item_payload_set_u64(item_payload, 16);
+
+    //200000 * 0.000016 rounded up to the nearest lamport
+    assert(calculate_additional_transaction_fees() == 4);
+}
+
+void test_additional_transaction_fees_unit(){
+    SummaryItemPayload* item_payload;
+
+    transaction_summary_reset();
+
+    item_payload = transaction_summary_payload_priority_fees_item();
+    summary_item_payload_set_u64(item_payload, 16);
+
+    item_payload = transaction_summary_payload_compute_units_limit_item();
+    summary_item_payload_set_u64(item_payload, 64000);
+
+    //64000 * 0.000016 rounded up to the nearest lamport
+    assert(calculate_additional_transaction_fees() == 2);
+}
+
+void test_additional_transaction_fees_unit_integer_result(){
+    SummaryItemPayload* item_payload;
+
+    transaction_summary_reset();
+
+    item_payload = transaction_summary_payload_priority_fees_item();
+    summary_item_payload_set_u64(item_payload, 1);
+
+    item_payload = transaction_summary_payload_compute_units_limit_item();
+    summary_item_payload_set_u64(item_payload, 1000000);
+
+    //64000 * 0.000016 rounded up to the nearest lamport
+    assert(calculate_additional_transaction_fees() == 1);
+}
+
+void test_summary_item_payload_as_unused_returns_null(){
+    SummaryItemPayload* item_payload;
+
+    transaction_summary_reset();
+
+    item_payload = transaction_summary_payload_priority_fees_item();
+    summary_item_payload_set_u64(item_payload, 16);
+
+    assert(transaction_summary_payload_priority_fees_item() == NULL);
+}
+
 int main() {
     test_summary_item_setters();
     test_summary_item_as_unused();
@@ -384,6 +438,11 @@ int main() {
     test_transaction_summary_finalize();
 
     test_repro_unrecognized_format_reverse_nav_hash_corruption_bug();
+
+    test_additional_transaction_fees_unit_price_only();
+    test_additional_transaction_fees_unit_integer_result();
+    test_additional_transaction_fees_unit();
+    test_summary_item_payload_as_unused_returns_null();
 
     printf("passed\n");
     return 0;
