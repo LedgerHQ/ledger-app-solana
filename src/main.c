@@ -253,7 +253,6 @@ static void start_app_from_lib(void) {
 }
 
 static void library_main_helper(libargs_t *args) {
-    check_api_level(CX_COMPAT_APILEVEL);
     switch (args->command) {
         case CHECK_ADDRESS:
             // ensure result is zero if an exception is thrown
