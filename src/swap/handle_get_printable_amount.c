@@ -1,5 +1,6 @@
 #include "handle_get_printable_amount.h"
 #include "swap_lib_calls.h"
+#include "swap_utils.h"
 #include "utils.h"
 #include "sol/printer.h"
 

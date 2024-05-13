@@ -38,6 +38,7 @@ typedef enum ApduReply {
     ApduReplySdkNotEnoughSpace = 0x6819,
 
     ApduReplyNoApduReceived = 0x6982,
+    ApduReplyUserRefusal = 0x6985,
 
     ApduReplySolanaInvalidMessage = 0x6a80,
     ApduReplySolanaInvalidMessageHeader = 0x6a81,

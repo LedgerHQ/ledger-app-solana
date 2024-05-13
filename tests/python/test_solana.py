@@ -22,9 +22,14 @@ class TestGetPublicKey:
                                                           ROOT_SCREENSHOT_PATH,
                                                           test_name)
             else:
+                instructions = [
+                    NavInsID.USE_CASE_REVIEW_TAP,
+                    NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM,
+                    NavInsID.USE_CASE_STATUS_DISMISS
+                ]
                 navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH,
                                                test_name,
-                                               [NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM])
+                                               instructions)
 
         assert sol.get_async_response().data == from_public_key
 
@@ -40,9 +45,14 @@ class TestGetPublicKey:
                                                           ROOT_SCREENSHOT_PATH,
                                                           test_name)
             else:
+                instructions = [
+                    NavInsID.USE_CASE_REVIEW_TAP,
+                    NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CANCEL,
+                    NavInsID.USE_CASE_STATUS_DISMISS
+                ]
                 navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH,
                                                test_name,
-                                               [NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CANCEL])
+                                               instructions)
 
         assert sol.get_async_response().status == ErrorType.USER_CANCEL
 

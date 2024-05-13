@@ -16,17 +16,21 @@
  ********************************************************************************/
 
 #include "utils.h"
-#include "getPubkey.h"
-#include "signMessage.h"
-#include "signOffchainMessage.h"
+#include "handle_get_pubkey.h"
+#include "handle_sign_message.h"
+#include "handle_sign_offchain_message.h"
 #include "apdu.h"
-#include "menu.h"
+#include "ui_api.h"
 
 // Swap feature
 #include "swap_lib_calls.h"
 #include "handle_swap_sign_transaction.h"
 #include "handle_get_printable_amount.h"
 #include "handle_check_address.h"
+
+#ifdef HAVE_NBGL
+#include "nbgl_use_case.h"
+#endif
 
 ApduCommand G_command;
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
@@ -114,12 +118,6 @@ void app_main(void) {
                 rx = io_exchange(CHANNEL_APDU | flags, rx);
                 flags = 0;
 
-                if (G_called_from_swap && G_swap_response_ready) {
-                    PRINTF("Quitting app started in swap mode\n");
-                    // Quit app, we are in limited mode and our work is done
-                    os_sched_exit(0);
-                }
-
                 // no apdu received, well, reset the session, and reset the
                 // bootloader configuration
                 if (rx == 0) {
@@ -162,93 +160,6 @@ void app_main(void) {
     }
 }
 
-// override point, but nothing more to do
-void io_seproxyhal_display(const bagl_element_t *element) {
-    io_seproxyhal_display_default((bagl_element_t *) element);
-}
-
-unsigned char io_event(unsigned char channel) {
-    UNUSED(channel);
-
-    // nothing done with the event, throw an error on the transport layer if
-    // needed
-
-    // can't have more than one tag in the reply, not supported yet.
-    switch (G_io_seproxyhal_spi_buffer[0]) {
-        case SEPROXYHAL_TAG_FINGER_EVENT:
-            UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
-            break;
-
-        case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
-            UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
-            break;
-
-        case SEPROXYHAL_TAG_STATUS_EVENT:
-            if (G_io_apdu_media == IO_APDU_MEDIA_USB_HID &&
-                !(U4BE(G_io_seproxyhal_spi_buffer, 3) &
-                  SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
-                THROW(ApduReplySdkExceptionIoReset);
-            }
-            // no break is intentional
-        default:
-            UX_DEFAULT_EVENT();
-            break;
-
-        case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
-            UX_DISPLAYED_EVENT({});
-            break;
-
-        case SEPROXYHAL_TAG_TICKER_EVENT:
-            UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
-#if !defined(TARGET_NANOX) && !defined(TARGET_NANOS2)
-                if (UX_ALLOWED) {
-                    if (ux_step_count) {
-                        // prepare next screen
-                        ux_step = (ux_step + 1) % ux_step_count;
-                        // redisplay screen
-                        UX_REDISPLAY();
-                    }
-                }
-#endif  // TARGET_NANOX
-            });
-            break;
-    }
-
-    // close the event if not done previously (by a display or whatever)
-    if (!io_seproxyhal_spi_is_status_sent()) {
-        io_seproxyhal_general_status();
-    }
-
-    // command has been processed, DO NOT reset the current APDU transport
-    return 1;
-}
-
-unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
-    switch (channel & ~(IO_FLAGS)) {
-        case CHANNEL_KEYBOARD:
-            break;
-
-        // multiplexed io exchange over a SPI channel and
-        // TLV encapsulated protocol
-        case CHANNEL_SPI:
-            if (tx_len) {
-                io_seproxyhal_spi_send(G_io_apdu_buffer, tx_len);
-
-                if (channel & IO_RESET_AFTER_REPLIED) {
-                    reset();
-                }
-                return 0;  // nothing received from the master so far
-                           // (it's a tx transaction)
-            } else {
-                return io_seproxyhal_spi_recv(G_io_apdu_buffer, sizeof(G_io_apdu_buffer), 0);
-            }
-
-        default:
-            THROW(ApduReplySdkInvalidParameter);
-    }
-    return 0;
-}
-
 void app_exit(void) {
     BEGIN_TRY_L(exit) {
         TRY_L(exit) {
@@ -264,7 +175,7 @@ void nv_app_state_init() {
     if (N_storage.initialized != 0x01) {
         internalStorage_t storage;
         storage.settings.allow_blind_sign = BlindSignDisabled;
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX)
         storage.settings.pubkey_display = PubkeyDisplayLong;
 #else
         storage.settings.pubkey_display = PubkeyDisplayShort;
@@ -299,7 +210,7 @@ void coin_main(void) {
 
 #ifdef HAVE_BLE
                 BLE_power(0, NULL);
-                BLE_power(1, "Nano X");
+                BLE_power(1, NULL);
 #endif  // HAVE_BLE
 
                 app_main();
@@ -323,6 +234,9 @@ static void start_app_from_lib(void) {
     G_called_from_swap = true;
     G_swap_response_ready = false;
     UX_INIT();
+#ifdef HAVE_NBGL
+    nbgl_useCaseSpinner("Signing");
+#endif  // HAVE_BAGL
     io_seproxyhal_init();
     nv_app_state_init();
     USB_power(0);
@@ -333,13 +247,12 @@ static void start_app_from_lib(void) {
     // grab the current plane mode setting
     G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
     BLE_power(0, NULL);
-    BLE_power(1, "Nano X");
+    BLE_power(1, NULL);
 #endif  // HAVE_BLE
     app_main();
 }
 
 static void library_main_helper(libargs_t *args) {
-    check_api_level(CX_COMPAT_APILEVEL);
     switch (args->command) {
         case CHECK_ADDRESS:
             // ensure result is zero if an exception is thrown

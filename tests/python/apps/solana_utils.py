@@ -67,8 +67,9 @@ def enable_blind_signing(navigator, device_name: str, snapshots_name: str):
               ]
     else:
         nav = [NavInsID.USE_CASE_HOME_SETTINGS,
-           NavIns(NavInsID.TOUCH, (348,132)),
-           NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
+               NavInsID.USE_CASE_SETTINGS_NEXT,
+               NavIns(NavInsID.TOUCH, (348,132)),
+               NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
     navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH,
                                    snapshots_name,
                                    nav,
@@ -83,8 +84,9 @@ def enable_short_public_key(navigator, device_name: str, snapshots_name: str):
               ]
     else:
         nav = [NavInsID.USE_CASE_HOME_SETTINGS,
-           NavIns(NavInsID.TOUCH, (348,251)),
-           NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
+               NavInsID.USE_CASE_SETTINGS_NEXT,
+               NavIns(NavInsID.TOUCH, (348,251)),
+               NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
     navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH,
                                    snapshots_name,
                                    nav,
@@ -99,8 +101,9 @@ def enable_expert_mode(navigator, device_name: str, snapshots_name: str):
               ]
     else:
         nav = [NavInsID.USE_CASE_HOME_SETTINGS,
-           NavIns(NavInsID.TOUCH, (348,382)),
-           NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
+               NavInsID.USE_CASE_SETTINGS_NEXT,
+               NavIns(NavInsID.TOUCH, (348,382)),
+               NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
     navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH,
                                    snapshots_name,
                                    nav,
@@ -118,9 +121,9 @@ def _navigation_helper(navigator, device_name: str, accept: bool, snapshots_name
         navigate_instruction = NavInsID.USE_CASE_REVIEW_TAP
         text = "Hold to sign"
         if accept:
-            validation_instructions = [NavInsID.USE_CASE_REVIEW_CONFIRM]
+            validation_instructions = [NavInsID.USE_CASE_REVIEW_CONFIRM, NavInsID.USE_CASE_STATUS_DISMISS]
         else:
-            validation_instructions = [NavInsID.USE_CASE_REVIEW_REJECT, NavInsID.USE_CASE_CHOICE_CONFIRM]
+            validation_instructions = [NavInsID.USE_CASE_REVIEW_REJECT, NavInsID.USE_CASE_CHOICE_CONFIRM, NavInsID.USE_CASE_STATUS_DISMISS]
 
 
     navigator.navigate_until_text_and_compare(navigate_instruction,
