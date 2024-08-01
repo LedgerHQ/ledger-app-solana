@@ -1,6 +1,7 @@
 import base58
 from pathlib import Path
 
+from ragger.firmware import Firmware
 from ragger.navigator import NavInsID, NavIns
 from ragger.utils import create_currency_config
 from ragger.bip import pack_derivation_path
@@ -58,8 +59,8 @@ SOL_PACKED_DERIVATION_PATH_2    = pack_derivation_path("m/44'/501'/0'/0'")
 SOL_CONF = create_currency_config("SOL", "Solana")
 
 
-def enable_blind_signing(navigator, device_name: str, snapshots_name: str):
-    if device_name.startswith("nano"):
+def enable_blind_signing(navigator, firmware, snapshots_name: str):
+    if firmware.is_nano:
         nav = [NavInsID.RIGHT_CLICK, NavInsID.BOTH_CLICK, # Go to settings
                NavInsID.BOTH_CLICK, # Select blind signing
                NavInsID.RIGHT_CLICK, NavInsID.BOTH_CLICK, # Enable
@@ -67,7 +68,6 @@ def enable_blind_signing(navigator, device_name: str, snapshots_name: str):
               ]
     else:
         nav = [NavInsID.USE_CASE_HOME_SETTINGS,
-               NavInsID.USE_CASE_SETTINGS_NEXT,
                NavIns(NavInsID.TOUCH, (348,132)),
                NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
     navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH,
@@ -92,48 +92,23 @@ def enable_short_public_key(navigator, device_name: str, snapshots_name: str):
                                    nav,
                                    screen_change_before_first_instruction=False)
 
-def enable_expert_mode(navigator, device_name: str, snapshots_name: str):
-    if device_name.startswith("nano"):
+def enable_expert_mode(navigator, firmware, snapshots_name: str):
+    if firmware.is_nano:
         nav = [NavInsID.RIGHT_CLICK, NavInsID.BOTH_CLICK, # Go to settings
                NavInsID.RIGHT_CLICK, NavInsID.RIGHT_CLICK, NavInsID.BOTH_CLICK, # Select Expert mode
                NavInsID.RIGHT_CLICK, NavInsID.BOTH_CLICK, # expert
                NavInsID.RIGHT_CLICK, NavInsID.BOTH_CLICK # Back to main menu
               ]
-    else:
+    elif firmware is Firmware.STAX:
+        nav = [NavInsID.USE_CASE_HOME_SETTINGS,
+               NavIns(NavInsID.TOUCH, (348,382)),
+               NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
+    elif firmware is Firmware.FLEX:
         nav = [NavInsID.USE_CASE_HOME_SETTINGS,
                NavInsID.USE_CASE_SETTINGS_NEXT,
-               NavIns(NavInsID.TOUCH, (348,382)),
+               NavIns(NavInsID.TOUCH, (250,160)),
                NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
     navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH,
                                    snapshots_name,
                                    nav,
                                    screen_change_before_first_instruction=False)
-
-def _navigation_helper(navigator, device_name: str, accept: bool, snapshots_name: str):
-    if device_name.startswith("nano"):
-        navigate_instruction = NavInsID.RIGHT_CLICK
-        validation_instructions = [NavInsID.BOTH_CLICK]
-        if accept:
-            text = "Approve"
-        else:
-            text = "Reject"
-    else:
-        navigate_instruction = NavInsID.USE_CASE_REVIEW_TAP
-        text = "Hold to sign"
-        if accept:
-            validation_instructions = [NavInsID.USE_CASE_REVIEW_CONFIRM, NavInsID.USE_CASE_STATUS_DISMISS]
-        else:
-            validation_instructions = [NavInsID.USE_CASE_REVIEW_REJECT, NavInsID.USE_CASE_CHOICE_CONFIRM, NavInsID.USE_CASE_STATUS_DISMISS]
-
-
-    navigator.navigate_until_text_and_compare(navigate_instruction,
-                                              validation_instructions,
-                                              text,
-                                              ROOT_SCREENSHOT_PATH,
-                                              snapshots_name)
-
-def navigation_helper_confirm(navigator, device_name: str, snapshots_name: str):
-    _navigation_helper(navigator=navigator, device_name=device_name, accept=True, snapshots_name=snapshots_name)
-
-def navigation_helper_reject(navigator, device_name: str, snapshots_name: str):
-    _navigation_helper(navigator=navigator, device_name=device_name, accept=False, snapshots_name=snapshots_name)
