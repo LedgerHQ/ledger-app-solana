@@ -461,7 +461,7 @@ static int print_spl_token_initialize_account_info(const char* primary_title,
     summary_item_set_pubkey(item, "Owner", info->owner);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "Mint", info->mint_account);
+    summary_item_set_pubkey(item, "Token address", info->mint_account);
 
     return 0;
 }
@@ -503,10 +503,13 @@ int print_spl_token_transfer_info(const SplTokenTransferInfo* info,
                                   info->body.decimals);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "From", info->src_account);
+    summary_item_set_pubkey(item, "Token address", info->mint_account);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "To", info->dest_account);
+    summary_item_set_pubkey(item, "From (token account)", info->src_account);
+
+    item = transaction_summary_general_item();
+    summary_item_set_pubkey(item, "To (token account)", info->dest_account);
 
     print_spl_token_sign(&info->sign, print_config);
 
@@ -529,7 +532,10 @@ static int print_spl_token_approve_info(const SplTokenApproveInfo* info,
                                   info->body.decimals);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "From", info->token_account);
+    summary_item_set_pubkey(item, "Token address", info->mint_account);
+
+    item = transaction_summary_general_item();
+    summary_item_set_pubkey(item, "From (token account)", info->token_account);
 
     print_spl_token_sign(&info->sign, print_config);
 
@@ -591,13 +597,11 @@ static int print_spl_token_mint_to_info(const SplTokenMintToInfo* info,
                                   symbol,
                                   info->body.decimals);
 
-    if (print_config->expert_mode) {
-        item = transaction_summary_general_item();
-        summary_item_set_pubkey(item, "From", info->mint_account);
-    }
+    item = transaction_summary_general_item();
+    summary_item_set_pubkey(item, "Token address", info->mint_account);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "To", info->token_account);
+    summary_item_set_pubkey(item, "To (token account)", info->token_account);
 
     print_spl_token_sign(&info->sign, print_config);
 
@@ -619,7 +623,10 @@ static int print_spl_token_burn_info(const SplTokenBurnInfo* info,
                                   info->body.decimals);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "From", info->token_account);
+    summary_item_set_pubkey(item, "Token address", info->mint_account);
+
+    item = transaction_summary_general_item();
+    summary_item_set_pubkey(item, "From (token account)", info->token_account);
 
     print_spl_token_sign(&info->sign, print_config);
 
@@ -633,7 +640,7 @@ static int print_spl_token_close_account_info(const SplTokenCloseAccountInfo* in
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
-    summary_item_set_pubkey(item, "Close acct", info->token_account);
+    summary_item_set_pubkey(item, "Close token account", info->token_account);
 
     item = transaction_summary_general_item();
     summary_item_set_pubkey(item, "Withdraw to", info->dest_account);
@@ -648,11 +655,11 @@ static int print_spl_token_freeze_account_info(const SplTokenFreezeAccountInfo* 
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
-    summary_item_set_pubkey(item, "Freeze acct", info->token_account);
+    summary_item_set_pubkey(item, "Freeze token account", info->token_account);
 
     if (print_config->expert_mode) {
         item = transaction_summary_general_item();
-        summary_item_set_pubkey(item, "Mint", info->mint_account);
+        summary_item_set_pubkey(item, "Token address", info->mint_account);
     }
 
     print_spl_token_sign(&info->sign, print_config);
@@ -665,11 +672,11 @@ static int print_spl_token_thaw_account_info(const SplTokenThawAccountInfo* info
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
-    summary_item_set_pubkey(item, "Thaw acct", info->token_account);
+    summary_item_set_pubkey(item, "Thaw token account", info->token_account);
 
     if (print_config->expert_mode) {
         item = transaction_summary_general_item();
-        summary_item_set_pubkey(item, "Mint", info->mint_account);
+        summary_item_set_pubkey(item, "Token address", info->mint_account);
     }
 
     print_spl_token_sign(&info->sign, print_config);
@@ -684,7 +691,7 @@ static int print_spl_token_sync_native_info(const SplTokenSyncNativeInfo* info,
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
-    summary_item_set_pubkey(item, "Sync native acct", info->token_account);
+    summary_item_set_pubkey(item, "Sync native account", info->token_account);
 
     return 0;
 }

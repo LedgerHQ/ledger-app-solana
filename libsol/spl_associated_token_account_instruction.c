@@ -41,13 +41,13 @@ int print_spl_associated_token_account_create_info(const SplAssociatedTokenAccou
     UNUSED(print_config);
 
     SummaryItem* item = transaction_summary_primary_item();
-    summary_item_set_pubkey(item, "Create token acct", info->address);
+    summary_item_set_pubkey(item, "Create token account", info->address);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "From mint", info->mint);
+    summary_item_set_pubkey(item, "For", info->owner);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "Owned by", info->owner);
+    summary_item_set_pubkey(item, "Token address", info->mint);
 
     item = transaction_summary_general_item();
     summary_item_set_pubkey(item, "Funded by", info->funder);

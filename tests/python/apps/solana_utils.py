@@ -105,8 +105,7 @@ def enable_expert_mode(navigator, firmware, snapshots_name: str):
                NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
     elif firmware is Firmware.FLEX:
         nav = [NavInsID.USE_CASE_HOME_SETTINGS,
-               NavInsID.USE_CASE_SETTINGS_NEXT,
-               NavIns(NavInsID.TOUCH, (250,160)),
+               NavIns(NavInsID.TOUCH, (250,430)),
                NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT]
     navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH,
                                    snapshots_name,

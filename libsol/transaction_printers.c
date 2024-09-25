@@ -87,6 +87,23 @@ const InstructionBrief stake_split_with_seed_brief_v1_2[] = {
 #define is_stake_split_with_seed_v1_2(infos, infos_length) \
     instruction_infos_match_briefs(infos, stake_split_with_seed_brief_v1_2, infos_length)
 
+const InstructionBrief stake_split_brief_v1_3[] = {
+    SYSTEM_IX_BRIEF(SystemTransfer),
+    SYSTEM_IX_BRIEF(SystemAllocate),
+    SYSTEM_IX_BRIEF(SystemAssign),
+    STAKE_IX_BRIEF(StakeSplit),
+};
+#define is_stake_split_v1_3(infos, infos_length) \
+    instruction_infos_match_briefs(infos, stake_split_brief_v1_3, infos_length)
+
+const InstructionBrief stake_split_with_seed_brief_v1_3[] = {
+    SYSTEM_IX_BRIEF(SystemTransfer),
+    SYSTEM_IX_BRIEF(SystemAllocateWithSeed),
+    STAKE_IX_BRIEF(StakeSplit),
+};
+#define is_stake_split_with_seed_v1_3(infos, infos_length) \
+    instruction_infos_match_briefs(infos, stake_split_with_seed_brief_v1_3, infos_length)
+
 const InstructionBrief stake_authorize_both_brief[] = {
     STAKE_IX_BRIEF(StakeAuthorize),
     STAKE_IX_BRIEF(StakeAuthorize),
@@ -288,6 +305,28 @@ static int print_stake_split_with_seed(const PrintConfig* print_config,
     return 0;
 }
 
+static int print_prefunded_split(const PrintConfig* print_config,
+                                 InstructionInfo* const* infos,
+                                 size_t infos_length) {
+    UNUSED(infos_length);
+
+    BAIL_IF(print_system_prefund_for_split(&infos[0]->system, print_config));
+    BAIL_IF(print_stake_split_info(&infos[3]->stake.split, print_config));
+
+    return 0;
+}
+
+static int print_prefunded_split_with_seed(const PrintConfig* print_config,
+                                           InstructionInfo* const* infos,
+                                           size_t infos_length) {
+    UNUSED(infos_length);
+
+    BAIL_IF(print_system_prefund_for_split(&infos[0]->system, print_config));
+    BAIL_IF(print_stake_split_with_seed(print_config, &infos[1], 2, true));
+
+    return 0;
+}
+
 static int print_stake_authorize_both(const PrintConfig* print_config,
                                       InstructionInfo* const* infos,
                                       size_t infos_length) {
@@ -473,13 +512,13 @@ static int print_spl_token_create_account(const PrintConfig* print_config,
     const SplTokenInitializeAccountInfo* ia_info = &infos[1]->spl_token.initialize_account;
 
     SummaryItem* item = transaction_summary_primary_item();
-    summary_item_set_pubkey(item, "Create token acct", ia_info->token_account);
+    summary_item_set_pubkey(item, "Create token account", ia_info->token_account);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "From mint", ia_info->mint_account);
+    summary_item_set_pubkey(item, "For", ia_info->owner);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "Owned by", ia_info->owner);
+    summary_item_set_pubkey(item, "Token address", ia_info->mint_account);
 
     if (print_config_show_authority(print_config, ca_info->from)) {
         item = transaction_summary_general_item();
@@ -552,6 +591,7 @@ static int print_transaction_nonce_processed(const PrintConfig* print_config,
                         print_config);
                 case ProgramIdSerumAssertOwner:
                 case ProgramIdSplMemo:
+                case ProgramIdComputeBudget:
                 case ProgramIdUnknown:
                     break;
             }
@@ -612,6 +652,13 @@ static int print_transaction_nonce_processed(const PrintConfig* print_config,
                 // System allocate/assign have no interesting info, print
                 // stake split as if it were a single instruction
                 return print_stake_info(&infos[2]->stake, print_config);
+            } else if (is_stake_split_with_seed_v1_3(infos, infos_length)) {
+                return print_prefunded_split_with_seed(print_config, infos, infos_length);
+            }
+            break;
+        case 4:
+            if (is_stake_split_v1_3(infos, infos_length)) {
+                return print_prefunded_split(print_config, infos, infos_length);
             }
             break;
 
@@ -620,6 +667,48 @@ static int print_transaction_nonce_processed(const PrintConfig* print_config,
     }
 
     return 1;
+}
+
+InstructionInfo* const* preprocess_compute_budget_instructions(const PrintConfig* print_config,
+                                                               InstructionInfo* const* infos,
+                                                               size_t* infos_length) {
+    size_t infos_length_initial = *infos_length;
+    if (infos_length_initial > 1) {
+        // Iterate over infos and print compute budget instructions and offset pointers
+        // Handle ComputeBudget instructions first due to tech limitations of the
+        // print_transaction_nonce_processed. We can get one or 4 ComputeBudget instructions in a
+        // single transaction, so we are not able to handle it in a static switch case.
+        ComputeBudgetFeeInfo compute_budget_fee_info = {.change_unit_limit = NULL,
+                                                        .change_unit_price = NULL,
+                                                        .instructions_count = infos_length_initial,
+                                                        .signatures_count = 0};
+        for (size_t info_idx = 0; info_idx < infos_length_initial; ++info_idx) {
+            InstructionInfo* instruction_info = infos[0];
+            if (instruction_info->kind == ProgramIdComputeBudget) {
+                compute_budget_fee_info.signatures_count =
+                    instruction_info->compute_budget.signatures_count;
+                // Unit limit and unit price needs to be aggregated
+                // before displaying as this is needed for calculating max fee properly
+                if (instruction_info->compute_budget.kind == ComputeBudgetChangeUnitLimit) {
+                    compute_budget_fee_info.change_unit_limit =
+                        &instruction_info->compute_budget.change_unit_limit;
+                }
+                if (instruction_info->compute_budget.kind == ComputeBudgetChangeUnitPrice) {
+                    compute_budget_fee_info.change_unit_price =
+                        &instruction_info->compute_budget.change_unit_price;
+                }
+                infos++;
+                (*infos_length)--;
+            }
+        }
+        if (compute_budget_fee_info.change_unit_limit ||
+            compute_budget_fee_info.change_unit_price) {
+            // We do not want to display anything related to the compute budget
+            // if no instructions of this type were present in the transaction
+            print_compute_budget(&compute_budget_fee_info, print_config);
+        }
+    }
+    return infos;
 }
 
 int print_transaction(const PrintConfig* print_config,
@@ -633,6 +722,8 @@ int print_transaction(const PrintConfig* print_config,
         infos++;
         infos_length--;
     }
+
+    infos = preprocess_compute_budget_instructions(print_config, infos, &infos_length);
 
     return print_transaction_nonce_processed(print_config, infos, infos_length);
 }
