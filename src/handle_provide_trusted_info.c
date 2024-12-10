@@ -153,8 +153,8 @@ typedef struct {
 static s_tlv_payload g_tlv_payload = {0};
 static s_trusted_name_info g_trusted_name_info = {0};
 
-uint8_t g_trusted_token_account_owner_pubkey[MAX_ADDRESS_LENGTH + 1] = {0};
-bool g_trusted_token_account_owner_pubkey_set = false;
+extern uint8_t g_trusted_token_account_owner_pubkey[MAX_ADDRESS_LENGTH + 1];
+extern bool g_trusted_token_account_owner_pubkey_set;
 
 /**
  * Get uint from tlv data
