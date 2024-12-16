@@ -107,7 +107,7 @@ typedef enum {
     SIGNATURE = 0x15,
 } e_tlv_tag;
 
-typedef enum { KEY_ID_TEST = 0x00, KEY_ID_PROD = 0x03 } e_key_id;
+typedef enum { KEY_ID_TEST = 0x00, KEY_ID_PROD = 0x07 } e_key_id;
 
 typedef struct {
     uint8_t *buf;
