@@ -97,7 +97,7 @@ class PKIClient:
     def  send_certificate(self, payload: bytes) -> RAPDU:
         response = self.send_raw(payload)
         assert response.status == StatusWord.OK
-        
+
 
     def send_raw(self, payload: bytes) -> RAPDU:
         header = bytearray()
@@ -125,7 +125,7 @@ class SolanaClient:
                              address: bytes,
                              chain_id: int,
                              challenge: Optional[int] = None):
-        
+
         payload = format_tlv(FieldTag.TAG_STRUCTURE_TYPE, 3)
         payload += format_tlv(FieldTag.TAG_VERSION, 2)
         payload += format_tlv(FieldTag.TAG_TRUSTED_NAME_TYPE, 0x06)
@@ -140,7 +140,7 @@ class SolanaClient:
         payload += format_tlv(FieldTag.TAG_SIGNER_ALGO, 1)  # secp256k1
         payload += format_tlv(FieldTag.TAG_DER_SIGNATURE,
                               sign_data(Key.TRUSTED_NAME, payload))
-               
+
         # send PKI certificate
         if self._pki_client is None:
             print(f"Ledger-PKI Not supported on '{self._client.firmware.name}'")
@@ -156,16 +156,16 @@ class SolanaClient:
                 cert_apdu = "01010102010211040000000212010013020002140101160400000000200C547275737465645F4E616D6530020004310104320121332102B91FBEC173E3BA4A714E014EBC827B6F899A9FA7F4AC769CDE284317A00F4F6534010135010515473045022100CEF28780DCAFA3A485D83406D519F9AC12FD9B9C3AA7AE798896013F07DD178D022020F01B1AB1D2AAEDA70357F615EAC55E17FE94EC36DF9DE850CEFACBC98D16C8"  # noqa: E501
             # pylint: enable=line-too-long
 
-            self._pki_client.send_certificate(bytes.fromhex(cert_apdu))   
-        
+            self._pki_client.send_certificate(bytes.fromhex(cert_apdu))
+
         # send TLV trusted info
         res: RAPDU = self._client.exchange(CLA, INS.INS_TRUSTED_INFO, P1_NON_CONFIRM, P2_NONE, payload)
         assert res.status == StatusWord.OK
 
     def get_challenge(self) -> bytes:
         challenge: RAPDU = self._client.exchange(CLA, INS.INS_GET_CHALLENGE,P1_NON_CONFIRM, P2_NONE)
-        
-        assert challenge.status == StatusWord.OK                                         
+
+        assert challenge.status == StatusWord.OK
         return challenge.data
 
     def get_public_key(self, derivation_path: bytes) -> bytes:
