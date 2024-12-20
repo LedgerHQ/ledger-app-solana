@@ -4,9 +4,14 @@
 #include "swap_lib_calls.h"
 #include "swap_utils.h"
 #include "sol/printer.h"
+#include "util.h"
+
+#define MAX_SWAP_TOKEN_LENGTH 15
 
 typedef struct swap_validated_s {
     bool initialized;
+    uint8_t decimals;
+    char ticker[MAX_SWAP_TOKEN_LENGTH];
     uint64_t amount;
     char recipient[BASE58_PUBKEY_LENGTH];
 } swap_validated_t;
@@ -18,12 +23,6 @@ static uint8_t *G_swap_sign_return_value_address;
 
 // Save the data validated during the Exchange app flow
 bool copy_transaction_parameters(create_transaction_parameters_t *params) {
-    // Ensure no subcoin configuration
-    if (params->coin_configuration != NULL || params->coin_configuration_length != 0) {
-        PRINTF("No coin_configuration expected\n");
-        return false;
-    }
-
     // Ensure no extraid
     if (params->destination_address_extra_id == NULL) {
         PRINTF("destination_address_extra_id expected\n");
@@ -38,6 +37,22 @@ bool copy_transaction_parameters(create_transaction_parameters_t *params) {
     // We need this "trick" as the input data position can overlap with app globals
     swap_validated_t swap_validated;
     memset(&swap_validated, 0, sizeof(swap_validated));
+
+    // Parse config and save decimals and ticker
+    // If there is no coin_configuration, consider that we are doing a SOL swap
+    if (params->coin_configuration == NULL) {
+        memcpy(swap_validated.ticker, "SOL", sizeof("SOL"));
+        swap_validated.decimals = SOL_DECIMALS;
+    } else {
+        if (!swap_parse_config(params->coin_configuration,
+                               params->coin_configuration_length,
+                               swap_validated.ticker,
+                               sizeof(swap_validated.ticker),
+                               &swap_validated.decimals)) {
+            PRINTF("Fail to parse coin_configuration\n");
+            return false;
+        }
+    }
 
     // Save recipient
     strlcpy(swap_validated.recipient,
@@ -67,18 +82,17 @@ bool copy_transaction_parameters(create_transaction_parameters_t *params) {
 }
 
 // Check that the amount in parameter is the same as the previously saved amount
-bool check_swap_amount(const char *title, const char *text) {
+bool check_swap_amount(const char *text) {
     if (!G_swap_validated.initialized) {
         return false;
     }
 
-    if (strcmp(title, "Transfer") != 0) {
-        PRINTF("Refused field '%s', expecting 'Transfer'\n", title);
-        return false;
-    }
-
     char validated_amount[MAX_PRINTABLE_AMOUNT_SIZE];
-    if (print_amount(G_swap_validated.amount, validated_amount, sizeof(validated_amount)) != 0) {
+    if (print_token_amount(G_swap_validated.amount,
+                           G_swap_validated.ticker,
+                           G_swap_validated.decimals,
+                           validated_amount,
+                           sizeof(validated_amount)) != 0) {
         PRINTF("Conversion failed\n");
         return false;
     }
@@ -93,13 +107,8 @@ bool check_swap_amount(const char *title, const char *text) {
 }
 
 // Check that the recipient in parameter is the same as the previously saved recipient
-bool check_swap_recipient(const char *title, const char *text) {
+bool check_swap_recipient(const char *text) {
     if (!G_swap_validated.initialized) {
-        return false;
-    }
-
-    if (strcmp(title, "Recipient") != 0) {
-        PRINTF("Refused field '%s', expecting 'Recipient'\n", title);
         return false;
     }
 
@@ -115,4 +124,8 @@ bool check_swap_recipient(const char *title, const char *text) {
 void __attribute__((noreturn)) finalize_exchange_sign_transaction(bool is_success) {
     *G_swap_sign_return_value_address = is_success;
     os_lib_end();
+}
+
+bool is_token_transaction() {
+    return (memcmp(G_swap_validated.ticker, "SOL", sizeof("SOL")) != 0);
 }

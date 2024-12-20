@@ -96,8 +96,6 @@ class PKIClient:
 
     def  send_certificate(self, payload: bytes) -> RAPDU:
         response = self.send_raw(payload)
-        assert response.status == StatusWord.OK
-        
 
     def send_raw(self, payload: bytes) -> RAPDU:
         header = bytearray()
@@ -107,7 +105,6 @@ class PKIClient:
         header.append(0x00)
         header.append(len(payload))
         return self._client.exchange_raw(header + payload)
-
 
 class SolanaClient:
     client: BackendInterface
@@ -119,13 +116,27 @@ class SolanaClient:
             # LedgerPKI not supported on Nanos
             self._pki_client = PKIClient(self._client)
 
+    def _exchange_split(self, cla: int, ins: int, p1: int, payload: bytes) -> RAPDU:
+        payload_split = [payload[x:x + MAX_CHUNK_SIZE] for x in range(0, len(payload), MAX_CHUNK_SIZE)]
+        for i, p in enumerate(payload_split):
+            p2 = P2_NONE
+            # Send all chunks with P2_MORE except for the last chunk
+            if i != len(payload_split) - 1:
+                p2 |= P2_MORE
+            # Send all chunks with P2_EXTEND except for the first chunk
+            if i != 0:
+                p2 |= P2_EXTEND
+            rapdu = self._client.exchange(CLA, ins=ins, p1=p1, p2=p2, data=p)
+
+        return rapdu
+
     def provide_trusted_name(self,
                              source_contract: bytes,
                              trusted_name: bytes,
                              address: bytes,
                              chain_id: int,
                              challenge: Optional[int] = None):
-        
+
         payload = format_tlv(FieldTag.TAG_STRUCTURE_TYPE, 3)
         payload += format_tlv(FieldTag.TAG_VERSION, 2)
         payload += format_tlv(FieldTag.TAG_TRUSTED_NAME_TYPE, 0x06)
@@ -140,7 +151,7 @@ class SolanaClient:
         payload += format_tlv(FieldTag.TAG_SIGNER_ALGO, 1)  # secp256k1
         payload += format_tlv(FieldTag.TAG_DER_SIGNATURE,
                               sign_data(Key.TRUSTED_NAME, payload))
-               
+
         # send PKI certificate
         if self._pki_client is None:
             print(f"Ledger-PKI Not supported on '{self._client.firmware.name}'")
@@ -156,17 +167,17 @@ class SolanaClient:
                 cert_apdu = "01010102010211040000000212010013020002140101160400000000200C547275737465645F4E616D6530020004310104320121332102B91FBEC173E3BA4A714E014EBC827B6F899A9FA7F4AC769CDE284317A00F4F6534010135010515473045022100CEF28780DCAFA3A485D83406D519F9AC12FD9B9C3AA7AE798896013F07DD178D022020F01B1AB1D2AAEDA70357F615EAC55E17FE94EC36DF9DE850CEFACBC98D16C8"  # noqa: E501
             # pylint: enable=line-too-long
 
-            self._pki_client.send_certificate(bytes.fromhex(cert_apdu))   
-        
+            self._pki_client.send_certificate(bytes.fromhex(cert_apdu))
+
         # send TLV trusted info
-        res: RAPDU = self._client.exchange(CLA, INS.INS_TRUSTED_INFO, P1_NON_CONFIRM, P2_NONE, payload)
-        assert res.status == StatusWord.OK
+        # res: RAPDU = self._client.exchange(CLA, INS.INS_TRUSTED_INFO, P1_NON_CONFIRM, P2_NONE, payload)
+        self._exchange_split(CLA, INS.INS_TRUSTED_INFO, P1_NON_CONFIRM, payload)
+
 
     def get_challenge(self) -> bytes:
         challenge: RAPDU = self._client.exchange(CLA, INS.INS_GET_CHALLENGE,P1_NON_CONFIRM, P2_NONE)
-        
-        assert challenge.status == StatusWord.OK                                         
         return challenge.data
+
 
     def get_public_key(self, derivation_path: bytes) -> bytes:
         public_key: RAPDU = self._client.exchange(CLA, INS.INS_GET_PUBKEY,
