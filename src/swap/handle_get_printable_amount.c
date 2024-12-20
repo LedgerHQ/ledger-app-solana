@@ -12,10 +12,10 @@ int handle_get_printable_amount(get_printable_amount_parameters_t* params) {
     // Fees are displayed normally
     // params->is_fee
 
-    if (params->coin_configuration != NULL || params->coin_configuration_length != 0) {
-        PRINTF("No coin_configuration expected\n");
-        return 0;
-    }
+    // if (params->coin_configuration != NULL || params->coin_configuration_length != 0) {
+    //     PRINTF("No coin_configuration expected\n");
+    //     return 0;
+    // }
 
     uint64_t amount;
     if (!swap_str_to_u64(params->amount, params->amount_length, &amount)) {
