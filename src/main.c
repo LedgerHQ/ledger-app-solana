@@ -36,8 +36,6 @@
 
 ApduCommand G_command;
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
-volatile bool G_called_from_swap;
-volatile bool G_swap_response_ready;
 
 static void reset_main_globals(void) {
     MEMCLEAR(G_command);

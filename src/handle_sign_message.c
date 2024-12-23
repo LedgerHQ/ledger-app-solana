@@ -1,4 +1,4 @@
-#include "io.h"
+#include "io_utils.h"
 #include "utils.h"
 #include "handle_swap_sign_transaction.h"
 
@@ -93,24 +93,47 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
 
 static bool check_swap_validity(const SummaryItemKind_t kinds[MAX_TRANSACTION_SUMMARY_ITEMS],
                                 size_t num_summary_steps) {
+    bool is_token_swap = is_token_transaction();
     bool amount_ok = false;
     bool recipient_ok = false;
-    if (num_summary_steps != 2 && num_summary_steps != 3) {
-        PRINTF("2 or 3 steps expected for transaction in swap context, not %u\n",
+    uint8_t expected_steps;
+    if (is_token_swap) {
+        expected_steps = 4;
+    } else {
+        expected_steps = 2;
+    }
+    // Accept base step number + optional fee step
+    if (num_summary_steps != expected_steps && num_summary_steps != expected_steps + 1) {
+        PRINTF("%d steps expected for token transaction in swap context, not %u\n",
+               expected_steps,
                num_summary_steps);
         return false;
     }
+
     for (size_t i = 0; i < num_summary_steps; ++i) {
         transaction_summary_display_item(i, DisplayFlagNone | DisplayFlagLongPubkeys);
+        PRINTF("Item (%d) '%s', '%s'\n", kinds[i], G_transaction_summary_title, G_transaction_summary_text);
         switch (kinds[i]) {
+            case SummaryItemTokenAmount:
+                amount_ok =
+                    check_swap_amount(G_transaction_summary_title, G_transaction_summary_text);
+                break;
             case SummaryItemAmount:
                 if (strcmp(G_transaction_summary_title, "Max fees") == 0) {
-                    break;  // Should we check the fees ?
+                    break;
                 }
                 amount_ok =
                     check_swap_amount(G_transaction_summary_title, G_transaction_summary_text);
                 break;
             case SummaryItemPubkey:
+                if (is_token_swap && strcmp(G_transaction_summary_title, "Token address") == 0) {
+                    PRINTF("Skip %s field\n", G_transaction_summary_title);
+                    break;
+                }
+                if (is_token_swap && strcmp(G_transaction_summary_title, "From (token account)") == 0) {
+                    PRINTF("Skip %s field\n", G_transaction_summary_title);
+                    break;
+                }
                 recipient_ok =
                     check_swap_recipient(G_transaction_summary_title, G_transaction_summary_text);
                 break;

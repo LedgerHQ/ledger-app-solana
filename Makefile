@@ -36,9 +36,9 @@ APPNAME = "Solana"
 
 # Application version
 APPVERSION_M = 1
-APPVERSION_N = 6
-APPVERSION_P = 1
-APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
+APPVERSION_N = 7
+APPVERSION_P = 0
+APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)-splswapv1"
 
 # Application source files
 APP_SOURCE_PATH += src
@@ -66,10 +66,14 @@ VARIANT_VALUES = solana
 ########################################
 #     Application custom permissions   #
 ########################################
-HAVE_APPLICATION_FLAG_LIBRARY = 1
 ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_STAX TARGET_FLEX))
 HAVE_APPLICATION_FLAG_BOLOS_SETTINGS = 1
 endif
+
+########################################
+# Swap features #
+########################################
+ENABLE_SWAP = 1
 
 ########################################
 # Application communication interfaces #
@@ -90,6 +94,8 @@ DISABLE_STANDARD_APP_FILES = 1
 
 # Allow usage of function from lib_standard_app/crypto_helpers.c
 APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/crypto_helpers.c
+APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/swap_utils.c
+CFLAGS           += -I${BOLOS_SDK}/lib_standard_app/
 
 WITH_U2F?=0
 ifneq ($(WITH_U2F),0)
@@ -102,6 +108,7 @@ WITH_LIBSOL?=1
 ifneq ($(WITH_LIBSOL),0)
     SOURCE_FILES += $(filter-out %_test.c,$(wildcard libsol/*.c))
     CFLAGS       += -Ilibsol/include
+    CFLAGS       += -Ilibsol
     DEFINES      += HAVE_SNPRINTF_FORMAT_U
     DEFINES      += NDEBUG
 endif
