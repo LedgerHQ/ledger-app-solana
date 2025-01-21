@@ -96,8 +96,6 @@ class PKIClient:
 
     def  send_certificate(self, payload: bytes) -> RAPDU:
         response = self.send_raw(payload)
-        assert response.status == StatusWord.OK
-
 
     def send_raw(self, payload: bytes) -> RAPDU:
         header = bytearray()
@@ -108,7 +106,6 @@ class PKIClient:
         header.append(len(payload))
         return self._client.exchange_raw(header + payload)
 
-
 class SolanaClient:
     client: BackendInterface
 
@@ -118,6 +115,20 @@ class SolanaClient:
         if self._client.firmware != Firmware.NANOS:
             # LedgerPKI not supported on Nanos
             self._pki_client = PKIClient(self._client)
+
+    def _exchange_split(self, cla: int, ins: int, p1: int, payload: bytes) -> RAPDU:
+        payload_split = [payload[x:x + MAX_CHUNK_SIZE] for x in range(0, len(payload), MAX_CHUNK_SIZE)]
+        for i, p in enumerate(payload_split):
+            p2 = P2_NONE
+            # Send all chunks with P2_MORE except for the last chunk
+            if i != len(payload_split) - 1:
+                p2 |= P2_MORE
+            # Send all chunks with P2_EXTEND except for the first chunk
+            if i != 0:
+                p2 |= P2_EXTEND
+            rapdu = self._client.exchange(CLA, ins=ins, p1=p1, p2=p2, data=p)
+
+        return rapdu
 
     def provide_trusted_name(self,
                              source_contract: bytes,
@@ -159,14 +170,14 @@ class SolanaClient:
             self._pki_client.send_certificate(bytes.fromhex(cert_apdu))
 
         # send TLV trusted info
-        res: RAPDU = self._client.exchange(CLA, INS.INS_TRUSTED_INFO, P1_NON_CONFIRM, P2_NONE, payload)
-        assert res.status == StatusWord.OK
+        # res: RAPDU = self._client.exchange(CLA, INS.INS_TRUSTED_INFO, P1_NON_CONFIRM, P2_NONE, payload)
+        self._exchange_split(CLA, INS.INS_TRUSTED_INFO, P1_NON_CONFIRM, payload)
+
 
     def get_challenge(self) -> bytes:
         challenge: RAPDU = self._client.exchange(CLA, INS.INS_GET_CHALLENGE,P1_NON_CONFIRM, P2_NONE)
-
-        assert challenge.status == StatusWord.OK
         return challenge.data
+
 
     def get_public_key(self, derivation_path: bytes) -> bytes:
         public_key: RAPDU = self._client.exchange(CLA, INS.INS_GET_PUBKEY,

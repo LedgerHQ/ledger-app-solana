@@ -1,6 +1,5 @@
 #include "apdu.h"
 #include "utils.h"
-#include "handle_provide_trusted_info.h"
 
 /**
  * Deserialize APDU into ApduCommand structure.
@@ -113,24 +112,52 @@ int apdu_handle_message(const uint8_t* apdu_message,
         return 0;
     } else if (header.instruction == InsDeprecatedSignMessage ||
                header.instruction == InsSignMessage ||
-               header.instruction == InsSignOffchainMessage) {
+               header.instruction == InsSignOffchainMessage ||
+               header.instruction == InsTrustedInfoProvideInfo) {
+        // Split APDU reception is only allowed for this instructions
         if (!first_data_chunk) {
             // validate the command in progress
-            if (apdu_command->state != ApduStatePayloadInProgress ||
-                apdu_command->instruction != header.instruction ||
-                apdu_command->non_confirm != (header.p1 == P1_NON_CONFIRM) ||
-                apdu_command->deprecated_host != header.deprecated_host ||
-                apdu_command->num_derivation_paths != 1) {
+            if (apdu_command->state != ApduStatePayloadInProgress) {
+                PRINTF("Concatenate error: state %d != ApduStatePayloadInProgress\n",
+                       apdu_command->state);
                 return ApduReplySolanaInvalidMessage;
             }
+            if (apdu_command->instruction != header.instruction) {
+                PRINTF("Concatenate error: ins %d != %d\n",
+                       apdu_command->instruction,
+                       header.instruction);
+                return ApduReplySolanaInvalidMessage;
+            }
+            if (apdu_command->non_confirm != (header.p1 == P1_NON_CONFIRM)) {
+                PRINTF("Concatenate error: NC %d != %d\n",
+                       apdu_command->non_confirm,
+                       (header.p1 == P1_NON_CONFIRM));
+                return ApduReplySolanaInvalidMessage;
+            }
+            if (apdu_command->deprecated_host != header.deprecated_host) {
+                PRINTF("Concatenate error: DH %d != %d\n",
+                       apdu_command->deprecated_host,
+                       header.deprecated_host);
+                return ApduReplySolanaInvalidMessage;
+            }
+            // This step only makes sense in message signing context
+            if (header.instruction != InsTrustedInfoProvideInfo) {
+                if (apdu_command->num_derivation_paths != 1) {
+                    PRINTF("Concatenate error: derivation path number %d != 1\n",
+                           apdu_command->num_derivation_paths);
+                    return ApduReplySolanaInvalidMessage;
+                }
+            }
         } else {
+            PRINTF("Overwrite any split context we may have\n");
             explicit_bzero(apdu_command, sizeof(ApduCommand));
         }
     } else {
+        // Split APDU reception is only allowed for this instructions, disregard extension flag
         explicit_bzero(apdu_command, sizeof(ApduCommand));
     }
 
-    if ((first_data_chunk) && (header.instruction != InsTrustedInfoProvideInfo)) {
+    if (first_data_chunk && (header.instruction != InsTrustedInfoProvideInfo)) {
         // read derivation path
         if (!header.deprecated_host && header.instruction != InsGetPubkey) {
             if (!header.data_length) {
@@ -189,11 +216,10 @@ int apdu_handle_message(const uint8_t* apdu_message,
     }
 
     // check if more data is expected
-    if (header.p2 & P2_MORE) {
-        return 0;
+    if (!(header.p2 & P2_MORE)) {
+        PRINTF("Received APDU is complete\n");
+        apdu_command->state = ApduStatePayloadComplete;
     }
-
-    apdu_command->state = ApduStatePayloadComplete;
 
     return 0;
 }

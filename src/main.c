@@ -53,11 +53,13 @@ void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx, int rx)
 
     const int ret = apdu_handle_message(G_io_apdu_buffer, rx, &G_command);
     if (ret != 0) {
+        PRINTF("Clear received invalid command\n");
         MEMCLEAR(G_command);
         THROW(ret);
     }
 
     if (G_command.state == ApduStatePayloadInProgress) {
+        PRINTF("Received first chunk of split payload\n");
         THROW(ApduReplySuccess);
     }
 
@@ -93,7 +95,7 @@ void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx, int rx)
 
         case InsTrustedInfoProvideInfo:
             handle_provide_trusted_info();
-            THROW(ApduReplySuccess);
+            break;
 
         default:
             THROW(ApduReplyUnimplementedInstruction);

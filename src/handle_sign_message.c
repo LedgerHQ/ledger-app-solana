@@ -112,7 +112,10 @@ static bool check_swap_validity(const SummaryItemKind_t kinds[MAX_TRANSACTION_SU
 
     for (size_t i = 0; i < num_summary_steps; ++i) {
         transaction_summary_display_item(i, DisplayFlagNone | DisplayFlagLongPubkeys);
-        PRINTF("Item (%d) '%s', '%s'\n", kinds[i], G_transaction_summary_title, G_transaction_summary_text);
+        PRINTF("Item (%d) '%s', '%s'\n",
+               kinds[i],
+               G_transaction_summary_title,
+               G_transaction_summary_text);
         switch (kinds[i]) {
             case SummaryItemTokenAmount:
                 amount_ok =
@@ -130,7 +133,8 @@ static bool check_swap_validity(const SummaryItemKind_t kinds[MAX_TRANSACTION_SU
                     PRINTF("Skip %s field\n", G_transaction_summary_title);
                     break;
                 }
-                if (is_token_swap && strcmp(G_transaction_summary_title, "From (token account)") == 0) {
+                if (is_token_swap &&
+                    strcmp(G_transaction_summary_title, "From (token account)") == 0) {
                     PRINTF("Skip %s field\n", G_transaction_summary_title);
                     break;
                 }

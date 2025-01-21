@@ -5,14 +5,19 @@
 
 #include "globals.h"
 #include "utils.h"
-#include "handle_provide_trusted_info.h"
 #include "handle_get_challenge.h"
+#include "base58.h"
 
 #include "sol/printer.h"
+#include "sol/trusted_info.h"
 
+#include "macros.h"
+#include "tlv.h"
+#include "tlv_utils.h"
 #include "os_pki.h"
-
 #include "ledger_pki.h"
+
+#include "handle_provide_trusted_info.h"
 
 #define TYPE_ADDRESS      0x06
 #define TYPE_DYN_RESOLVER 0x06
@@ -20,822 +25,289 @@
 #define STRUCT_TYPE_TRUSTED_NAME 0x03
 #define ALGO_SECP256K1           1
 
-#define DER_LONG_FORM_FLAG        0x80  // 8th bit set
-#define DER_FIRST_BYTE_VALUE_MASK 0x7f
+#define KEY_ID_TEST 0x00
+#define KEY_ID_PROD 0x07
 
-#define INT256_LENGTH 32
+trusted_info_t g_trusted_info;
 
-typedef enum { TLV_TAG, TLV_LENGTH, TLV_VALUE } e_tlv_step;
-
-// This enum needs to be ordered the same way as the e_tlv_tag one !
-typedef enum {
-    STRUCT_TYPE_RCV_BIT = 0,
-    STRUCT_VERSION_RCV_BIT,
-    TRUSTED_NAME_TYPE_RCV_BIT,
-    TRUSTED_NAME_SOURCE_RCV_BIT,
-    TRUSTED_NAME_RCV_BIT,
-    CHAIN_ID_RCV_BIT,
-    ADDRESS_RCV_BIT,
-    SOURCE_CONTRACT_RCV_BIT,
-    CHALLENGE_RCV_BIT,
-    SIGNER_KEY_ID_RCV_BIT,
-    SIGNER_ALGO_RCV_BIT,
-    SIGNATURE_RCV_BIT,
-} e_tlv_rcv_bit;
-
-#define RCV_FLAG(a) (1 << a)
-
-/*
-trusted_name_descriptor =   tlv(TAG_STRUCTURE_TYPE, u8(TYPE_TRUSTED_NAME))  3 bytes +
-                        &   tlv(TAG_VERSION, u8(0x02))                      3 bytes +
-                        &   tlv(TAG_TRUSTED_NAME_TYPE, 0x06)                3 bytes +
-                        &   tlv(TAG_TRUSTED_NAME_SOURCE, 0x06)              3 bytes +
-                        &   tlv(TAG_TRUSTED_NAME, trusted_name)             2 + 44 bytes +
-                        &   tlv(TAG_CHAIN_ID, chain_id)                     2 + 8 bytes +
-                        &   tlv(TAG_ADDRESS, address)                       2 + 44 bytes +
-                        &   tlv(TAG_SOURCE_CONTRACT, source_contract)*      2 + 44 bytes +
-                        &   tlv(TAG_CHALLENGE, challenge)                   2 + 4 bytes +
-                        &   tlv(TAG_SIGNER_KEY_ID, key_id)                  2 + 2 bytes +
-                        &   tlv(TAG_SIGNER_ALGORITHM, signature_algorithm)  2 + 1 byte +
-                        &   tlv(TAG_SIGNATURE, signature(~,~))              2 + 72 bytes => 247
-
-T  L  V
-01 01 03                                                                TAG_STRUCTURE_TYPE
-02 01 02                                                                TAG_VERSION
-70 01 06                                                                TAG_TRUSTED_NAME_TYPE
-71 01 06                                                                TAG_TRUSTED_NAME_SOURCE
-20 20 276497ba0bb8659172b72edd8c66e18f561764d9c86a610a3a7e0f79c0baf9db  TAG_TRUSTED_NAME
-23 01 65                                                                TAG_CHAIN_ID
-22 20 606501b302e1801892f80a2979f585f8855d0f2034790a2455f744fac503d7b5  TAG_ADDRESS
-73 20 c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d61  TAG_SOURCE_CONTRACT
-12 04 deadbeef                                                          TAG_CHALLENGE
-13 01 03                                                                TAG_SIGNER_KEY_ID
-14 01 01                                                                TAG_SIGNER_ALGORITHM
-15 47 30..2e
-
-
-01 01 03
-02 01 02
-70 01 06
-71 01 06
-20 20 276497BA0BB8659172B72EDD8C66E18F561764D9C86A610A3A7E0F79C0BAF9DB
-23 01 65
-22 20 606501B302E1801892F80A2979F585F8855D0F2034790A2455F744FAC503D7B5
-73 20 C6FA7AF3BEDBAD3A3D65F36AABC97431B1BBE4C2D2F6E0E47CA60203452F5D61
-12 04 DEADBEEF
-13 01 00
-14 01 01
-15 47 30..CF
-
-*/
-
-#define TLV_BUFFER_LENGTH 255 /* >= 247, APDU max payload */
-static uint8_t tlv_buffer[TLV_BUFFER_LENGTH] = {0};
-
-typedef enum {
-    STRUCT_TYPE = 0x01,
-    STRUCT_VERSION = 0x02,
-    TRUSTED_NAME_TYPE = 0x70,
-    TRUSTED_NAME_SOURCE = 0x71,
-    TRUSTED_NAME = 0x20,
-    CHAIN_ID = 0x23,
-    ADDRESS = 0x22,
-    SOURCE_CONTRACT = 0x73,
-    CHALLENGE = 0x12,
-    SIGNER_KEY_ID = 0x13,
-    SIGNER_ALGO = 0x14,
-    SIGNATURE = 0x15,
-} e_tlv_tag;
-
-typedef enum { KEY_ID_TEST = 0x00, KEY_ID_PROD = 0x07 } e_key_id;
-
-typedef struct {
-    uint8_t *buf;
-    uint8_t size;
-    uint8_t expected_size;
-} s_tlv_payload;
-
-typedef struct {
-    e_tlv_tag tag;
-    uint8_t length;
-    const uint8_t *value;
-} s_tlv_data;
-
-typedef struct {
-    uint32_t rcv_flags;
-    bool valid;
-    uint8_t struct_version;
-    uint8_t token_account[MAX_ADDRESS_LENGTH + 1];
-    uint8_t *owner;
-    uint8_t spl_token[MAX_ADDRESS_LENGTH + 1];
-    uint64_t chain_id;
-    uint8_t name_type;
-    uint8_t name_source;
-} s_trusted_name_info;
-
-typedef struct {
-    e_key_id key_id;
-    uint8_t input_sig_size;
-    const uint8_t *input_sig;
-    cx_sha256_t hash_ctx;
-} s_sig_ctx;
-
-typedef bool(t_tlv_handler)(const s_tlv_data *data,
-                            s_trusted_name_info *trusted_name_info,
-                            s_sig_ctx *sig_ctx);
-
-typedef struct {
-    e_tlv_tag tag;
-    t_tlv_handler *func;
-    e_tlv_rcv_bit rcv_bit;
-} s_tlv_handler;
-
-static s_tlv_payload g_tlv_payload = {0};
-static s_trusted_name_info g_trusted_name_info = {0};
-
-extern uint8_t g_trusted_token_account_owner_pubkey[MAX_ADDRESS_LENGTH + 1];
-extern bool g_trusted_token_account_owner_pubkey_set;
-
-/**
- * Get uint from tlv data
- *
- * Get an unsigned integer from variable length tlv data (up to 4 bytes)
- *
- * @param[in] data tlv data
- * @param[out] value the returned value
- * @return whether it was successful
- */
-static bool get_uint_from_data(const s_tlv_data *data, uint32_t *value) {
-    uint8_t size_diff;
-    uint8_t buffer[sizeof(uint32_t)];
-
-    if (data->length > sizeof(buffer)) {
-        PRINTF("Unexpectedly long value (%u bytes) for tag 0x%x\n", data->length, data->tag);
-        return false;
-    }
-    size_diff = sizeof(buffer) - data->length;
-    memset(buffer, 0, size_diff);
-    memcpy(buffer + size_diff, data->value, data->length);
-    *value = U4BE(buffer, 0);
-    return true;
+static void trusted_info_reset(trusted_info_t *trusted_info) {
+    explicit_bzero(trusted_info, sizeof(trusted_info));
 }
 
-/**
- * Handler for tag \ref STRUCT_TYPE
- *
- * @param[in] data the tlv data
- * @param[] trusted_name_info the trusted name information
- * @param[] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_struct_type(const s_tlv_data *data,
-                               s_trusted_name_info *trusted_name_info,
-                               s_sig_ctx *sig_ctx) {
-    uint32_t value;
-
-    (void) trusted_name_info;
-    (void) sig_ctx;
-    if (!get_uint_from_data(data, &value)) {
-        return false;
-    }
-    return (value == STRUCT_TYPE_TRUSTED_NAME);
+static bool handle_struct_type(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_uint8_t_from_tlv_data(data, &tlv_extracted->struct_type);
 }
 
-/**
- * Handler for tag \ref STRUCT_VERSION
- *
- * @param[in] data the tlv data
- * @param[out] trusted_name_info the trusted name information
- * @param[] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_struct_version(const s_tlv_data *data,
-                                  s_trusted_name_info *trusted_name_info,
-                                  s_sig_ctx *sig_ctx) {
-    uint32_t value;
-
-    (void) sig_ctx;
-    if (!get_uint_from_data(data, &value) || (value > UINT8_MAX)) {
-        return false;
-    }
-    trusted_name_info->struct_version = value;
-    return true;
+static bool handle_struct_version(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_uint8_t_from_tlv_data(data, &tlv_extracted->struct_version);
 }
 
-/**
- * Handler for tag \ref CHALLENGE
- *
- * @param[in] data the tlv data
- * @param[] trusted_name_info the trusted name information
- * @param[] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_challenge(const s_tlv_data *data,
-                             s_trusted_name_info *trusted_name_info,
-                             s_sig_ctx *sig_ctx) {
-    uint32_t value;
-    (void) trusted_name_info;
-    (void) sig_ctx;
-
-    if (!get_uint_from_data(data, &value)) {
-        return false;
-    }
-    return (value == get_challenge());
+static bool handle_challenge(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_uint32_from_tlv_data(data, &tlv_extracted->challenge);
 }
 
-/**
- * Handler for tag \ref SIGNER_KEY_ID
- *
- * @param[in] data the tlv data
- * @param[] trusted_name_info the trusted name information
- * @param[out] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_sign_key_id(const s_tlv_data *data,
-                               s_trusted_name_info *trusted_name_info,
-                               s_sig_ctx *sig_ctx) {
-    uint32_t value;
-    (void) trusted_name_info;
-
-    if (!get_uint_from_data(data, &value) || (value > UINT8_MAX)) {
-        return false;
-    }
-    sig_ctx->key_id = value;
-    return true;
+static bool handle_sign_key_id(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_uint8_t_from_tlv_data(data, &tlv_extracted->key_id);
 }
 
-/**
- * Handler for tag \ref SIGNER_ALGO
- *
- * @param[in] data the tlv data
- * @param[] trusted_name_info the trusted name information
- * @param[] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_sign_algo(const s_tlv_data *data,
-                             s_trusted_name_info *trusted_name_info,
-                             s_sig_ctx *sig_ctx) {
-    uint32_t value;
-
-    (void) trusted_name_info;
-    (void) sig_ctx;
-    if (!get_uint_from_data(data, &value)) {
-        return false;
-    }
-    return (value == ALGO_SECP256K1);
+static bool handle_sign_algo(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_uint8_t_from_tlv_data(data, &tlv_extracted->sig_algorithm);
 }
 
-/**
- * Handler for tag \ref SIGNATURE
- *
- * @param[in] data the tlv data
- * @param[] trusted_name_info the trusted name information
- * @param[out] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_signature(const s_tlv_data *data,
-                             s_trusted_name_info *trusted_name_info,
-                             s_sig_ctx *sig_ctx) {
-    (void) trusted_name_info;
-    sig_ctx->input_sig_size = data->length;
-    sig_ctx->input_sig = data->value;
-    return true;
+static bool handle_signature(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_buffer_from_tlv_data(data, &tlv_extracted->input_sig, 1, 0);
 }
 
-/**
- * Handler for tag \ref SOURCE_CONTRACT
- *
- * @param[in] data the tlv data
- * @param[] trusted_name_info the trusted name information
- * @param[out] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_source_contract(const s_tlv_data *data,
-                                   s_trusted_name_info *trusted_name_info,
-                                   s_sig_ctx *sig_ctx) {
-    (void) sig_ctx;
-    if (data->length > MAX_ADDRESS_LENGTH) {
-        PRINTF("SPL Token address too long! (%u)\n", data->length);
-        return false;
-    }
-
-    memcpy(trusted_name_info->spl_token, data->value, data->length);
-
-    trusted_name_info->spl_token[data->length] = '\0';
-    return true;
+static bool handle_source_contract(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_buffer_from_tlv_data(data,
+                                    &tlv_extracted->encoded_mint_address,
+                                    1,
+                                    BASE58_PUBKEY_LENGTH - 1);
 }
 
-/**
- * Tests if the given account name character is valid (in our subset of allowed characters)
- *
- * @param[in] c given character
- * @return whether the character is valid
- */
-/*static bool is_valid_account_character(char c) {
-    if (isalpha((int) c)) {
-        if (!islower((int) c)) {
-            return false;
-        }
-    } else if (!isdigit((int) c)) {
-        switch (c) {
-            case '.':
-            case '-':
-            case '_':
-                break;
-            default:
-                return false;
-        }
-    }
-    return true;
-}*/
-
-/**
- * Handler for tag \ref TRUSTED_NAME
- *
- * @param[in] data the tlv data
- * @param[out] trusted_name_info the trusted name information
- * @param[] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_trusted_name(const s_tlv_data *data,
-                                s_trusted_name_info *trusted_name_info,
-                                s_sig_ctx *sig_ctx) {
-    (void) sig_ctx;
-    if (data->length > MAX_ADDRESS_LENGTH) {
-        PRINTF("Token Account address too long! (%u)\n", data->length);
-        return false;
-    }
-
-    memcpy(trusted_name_info->token_account, data->value, data->length);
-
-    trusted_name_info->token_account[data->length] = '\0';
-    return true;
+static bool handle_trusted_name(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_buffer_from_tlv_data(data,
+                                    &tlv_extracted->encoded_token_address,
+                                    1,
+                                    BASE58_PUBKEY_LENGTH - 1);
 }
 
-/**
- * Handler for tag \ref ADDRESS
- *
- * @param[in] data the tlv data
- * @param[out] trusted_name_info the trusted name information
- * @param[] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_address(const s_tlv_data *data,
-                           s_trusted_name_info *trusted_name_info,
-                           s_sig_ctx *sig_ctx) {
-    (void) sig_ctx;
-    if (data->length > MAX_ADDRESS_LENGTH) {
-        PRINTF("Address too long! (%u)\n", data->length);
-        return false;
-    }
-    memcpy(trusted_name_info->owner, data->value, data->length);
-    trusted_name_info->owner[data->length] = '\0';
-    return true;
+static bool handle_address(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_buffer_from_tlv_data(data,
+                                    &tlv_extracted->encoded_owner_address,
+                                    1,
+                                    BASE58_PUBKEY_LENGTH - 1);
 }
 
-/**
- * Handler for tag \ref CHAIN_ID
- *
- * @param[in] data the tlv data
- * @param[out] trusted_name_info the trusted name information
- * @param[] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_chain_id(const s_tlv_data *data,
-                            s_trusted_name_info *trusted_name_info,
-                            s_sig_ctx *sig_ctx) {
-    (void) sig_ctx;
-    bool res = false;
-
+static bool handle_chain_id(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
     switch (data->length) {
-        case 1: {
-            trusted_name_info->chain_id = data->value[0];
-            res = true;
-            break;
-        }
-        case 2: {
-            trusted_name_info->chain_id = (data->value[0] << 8) | data->value[1];
-            res = true;
-            break;
-        }
+        case 1:
+            tlv_extracted->chain_id = data->value[0];
+            return true;
+        case 2:
+            tlv_extracted->chain_id = (data->value[0] << 8) | data->value[1];
+            return true;
         default:
             PRINTF("Error while parsing chain ID: length = %d\n", data->length);
+            return false;
     }
-    return res;
 }
 
-/**
- * Handler for tag \ref TRUSTED_NAME_TYPE
- *
- * @param[in] data the tlv data
- * @param[out] trusted_name_info the trusted name information
- * @param[] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_trusted_name_type(const s_tlv_data *data,
-                                     s_trusted_name_info *trusted_name_info,
-                                     s_sig_ctx *sig_ctx) {
-    uint32_t value;
-
-    (void) trusted_name_info;
-    (void) sig_ctx;
-    if (!get_uint_from_data(data, &value) || (value > UINT8_MAX)) {
-        return false;
-    }
-
-    if (value != TYPE_ADDRESS) {
-        PRINTF("Error: unsupported trusted name type (%u)!\n", value);
-        return false;
-    }
-    trusted_name_info->name_type = value;
-    return true;
+static bool handle_trusted_name_type(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_uint8_t_from_tlv_data(data, &tlv_extracted->name_type);
 }
 
-/**
- * Handler for tag \ref TRUSTED_NAME_SOURCE
- *
- * @param[in] data the tlv data
- * @param[out] trusted_name_info the trusted name information
- * @param[] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_trusted_name_source(const s_tlv_data *data,
-                                       s_trusted_name_info *trusted_name_info,
-                                       s_sig_ctx *sig_ctx) {
-    uint32_t value;
-
-    (void) trusted_name_info;
-    (void) sig_ctx;
-    if (!get_uint_from_data(data, &value) || (value > UINT8_MAX)) {
-        return false;
-    }
-
-    if (value != TYPE_DYN_RESOLVER) {
-        PRINTF("Error: unsupported trusted name source (%u)!\n", value);
-        return false;
-    }
-
-    trusted_name_info->name_source = value;
-    return true;
+static bool handle_trusted_name_source(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
+    return get_uint8_t_from_tlv_data(data, &tlv_extracted->name_source);
 }
 
-/**
- * Verify the signature context
- *
- * Verify the SHA-256 hash of the payload against the public key
- *
- * @param[in] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool verify_signature(const s_sig_ctx *sig_ctx) {
-    uint8_t hash[INT256_LENGTH];
-    cx_err_t error = CX_INTERNAL_ERROR;
+static int copy_and_decode_pubkey(const buffer_t in_encoded_address,
+                                  char *out_encoded_address,
+                                  uint8_t *decoded_address) {
+    int res;
 
-#ifdef HAVE_TRUSTED_NAME_TEST
-    e_key_id valid_key_id = KEY_ID_TEST;
-#else
-    e_key_id valid_key_id = KEY_ID_PROD;
-#endif
-    bool ret_code = false;
-
-    if (sig_ctx->key_id != valid_key_id) {
-        PRINTF("Error: Unknown metadata key ID %u\n", sig_ctx->key_id);
-        return false;
+    // Should be caught at parsing but let's double check
+    if (in_encoded_address.size >= BASE58_PUBKEY_LENGTH) {
+        PRINTF("Input address size exceeds buffer length\n");
+        return -1;
     }
 
-    CX_CHECK(
-        cx_hash_no_throw((cx_hash_t *) &sig_ctx->hash_ctx, CX_LAST, NULL, 0, hash, INT256_LENGTH));
+    // Save the encoded address
+    memset(out_encoded_address, 0, BASE58_PUBKEY_LENGTH);
+    memcpy(out_encoded_address, in_encoded_address.ptr, in_encoded_address.size);
 
-    CX_CHECK(check_signature_with_pubkey("Trusted Name",
-                                         hash,
-                                         sizeof(hash),
-                                         CERTIFICATE_PUBLIC_KEY_USAGE_TRUSTED_NAME,
-                                         (uint8_t *) (sig_ctx->input_sig),
-                                         sig_ctx->input_sig_size));
-
-    ret_code = true;
-end:
-    return ret_code;
-}
-
-/**
- * Calls the proper handler for the given TLV data
- *
- * Checks if there is a proper handler function for the given TLV tag and then calls it
- *
- * @param[in] handlers list of tag / handler function pairs
- * @param[in] handler_count number of handlers
- * @param[in] data the TLV data
- * @param[out] trusted_name_info the trusted name information
- * @param[out] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool handle_tlv_data(s_tlv_handler *handlers,
-                            int handler_count,
-                            const s_tlv_data *data,
-                            s_trusted_name_info *trusted_name_info,
-                            s_sig_ctx *sig_ctx) {
-    t_tlv_handler *fptr;
-
-    // check if a handler exists for this tag
-    for (int idx = 0; idx < handler_count; ++idx) {
-        if (handlers[idx].tag == data->tag) {
-            trusted_name_info->rcv_flags |= RCV_FLAG(handlers[idx].rcv_bit);
-            fptr = PIC(handlers[idx].func);
-            if (!(*fptr)(data, trusted_name_info, sig_ctx)) {
-                PRINTF("Error while handling tag 0x%x\n", handlers[idx].tag);
-                return false;
-            }
-            break;
-        }
+    // Decode and save the decoded address
+    res = base58_decode(out_encoded_address,
+                        strlen(out_encoded_address),
+                        decoded_address,
+                        PUBKEY_LENGTH);
+    if (res != PUBKEY_LENGTH) {
+        PRINTF("base58_decode error, %d != PUBKEY_LENGTH %d\n", res, PUBKEY_LENGTH);
+        return -1;
     }
-    return true;
+
+    return 0;
 }
 
-/**
- * Verify the validity of the received trusted struct
- *
- * @param[in] trusted_name_info the trusted name information
- * @return whether the struct is valid
- */
-static bool verify_struct(const s_trusted_name_info *trusted_name_info) {
-    uint32_t required_flags;
-
-    if (!(RCV_FLAG(STRUCT_VERSION_RCV_BIT) & trusted_name_info->rcv_flags)) {
+static int verify_struct(const tlv_out_t *tlv_extracted, uint32_t received_tags_flags) {
+    if (!(get_tag_flag(STRUCT_TYPE) & received_tags_flags)) {
+        PRINTF("Error: no struct type specified!\n");
+        return -1;
+    }
+    if (!(get_tag_flag(STRUCT_VERSION) & received_tags_flags)) {
         PRINTF("Error: no struct version specified!\n");
-        return false;
+        return -1;
     }
-    required_flags = RCV_FLAG(STRUCT_TYPE_RCV_BIT) | RCV_FLAG(STRUCT_VERSION_RCV_BIT) |
-                     RCV_FLAG(TRUSTED_NAME_TYPE_RCV_BIT) | RCV_FLAG(TRUSTED_NAME_SOURCE_RCV_BIT) |
-                     RCV_FLAG(TRUSTED_NAME_RCV_BIT) | RCV_FLAG(CHAIN_ID_RCV_BIT) |
-                     RCV_FLAG(ADDRESS_RCV_BIT) | RCV_FLAG(SOURCE_CONTRACT_RCV_BIT) |
-                     RCV_FLAG(CHALLENGE_RCV_BIT) | RCV_FLAG(SIGNER_KEY_ID_RCV_BIT) |
-                     RCV_FLAG(SIGNER_ALGO_RCV_BIT) | RCV_FLAG(SIGNATURE_RCV_BIT);
 
-    switch (trusted_name_info->struct_version) {
+    uint32_t expected_challenge = get_challenge();
+
+#ifdef TRUSTED_NAME_TEST_KEY
+    uint8_t valid_key_id = KEY_ID_TEST;
+#else
+    uint8_t valid_key_id = KEY_ID_PROD;
+#endif
+
+    switch (tlv_extracted->struct_version) {
         case 2:
-            if ((trusted_name_info->rcv_flags & required_flags) != required_flags) {
+            if (!RECEIVED_REQUIRED_TAGS(received_tags_flags,
+                                        STRUCT_TYPE,
+                                        STRUCT_VERSION,
+                                        TRUSTED_NAME_TYPE,
+                                        TRUSTED_NAME_SOURCE,
+                                        TRUSTED_NAME,
+                                        CHAIN_ID,
+                                        ADDRESS,
+                                        CHALLENGE,
+                                        SIGNER_KEY_ID,
+                                        SIGNER_ALGO,
+                                        SIGNATURE)) {
                 PRINTF("Error: missing required fields in struct version 2\n");
-                return false;
+                return -1;
             }
-            switch (trusted_name_info->name_type) {
-                case TYPE_ADDRESS:
-                    if (trusted_name_info->name_source != TYPE_DYN_RESOLVER) {
-                        PRINTF("Error: unsupported trusted name source (%u)!\n",
-                               trusted_name_info->name_source);
-                        return false;
-                    }
-                    break;
-                default:
-                    PRINTF("Error: unsupported trusted name type (%u)!\n",
-                           trusted_name_info->name_type);
-                    return false;
+            if (tlv_extracted->challenge != expected_challenge) {
+                // No risk printing it as DEBUG cannot be used in prod
+                PRINTF("Error: wrong challenge, received %u expected %u\n",
+                       tlv_extracted->challenge,
+                       expected_challenge);
+                return -1;
+            }
+            if (tlv_extracted->struct_type != STRUCT_TYPE_TRUSTED_NAME) {
+                PRINTF("Error: unexpected struct type %d\n", tlv_extracted->struct_type);
+                return -1;
+            }
+            if (tlv_extracted->name_type != TYPE_ADDRESS) {
+                PRINTF("Error: unsupported name type %d\n", tlv_extracted->name_type);
+                return -1;
+            }
+            if (tlv_extracted->name_source != TYPE_DYN_RESOLVER) {
+                PRINTF("Error: unsupported name source %d\n", tlv_extracted->name_source);
+                return -1;
+            }
+            if (tlv_extracted->sig_algorithm != ALGO_SECP256K1) {
+                PRINTF("Error: unsupported sig algorithm %d\n", tlv_extracted->sig_algorithm);
+                return -1;
+            }
+            if (tlv_extracted->key_id != valid_key_id) {
+                PRINTF("Error: wrong metadata key ID %u\n", tlv_extracted->key_id);
+                return -1;
             }
             break;
         default:
-            PRINTF("Error: unsupported trusted name struct version (%u) !\n",
-                   trusted_name_info->struct_version);
-            return false;
+            PRINTF("Error: unsupported struct version %d\n", tlv_extracted->struct_version);
+            return -1;
     }
-    return true;
+    return 0;
 }
 
-/** Parse DER-encoded value
- *
- * Parses a DER-encoded value (up to 4 bytes long)
- * https://en.wikipedia.org/wiki/X.690
- *
- * @param[in] payload the TLV payload
- * @param[in,out] offset the payload offset
- * @param[out] value the parsed value
- * @return whether it was successful
- */
-static bool parse_der_value(const s_tlv_payload *payload, size_t *offset, uint32_t *value) {
-    bool ret = false;
-    uint8_t byte_length;
-    uint8_t buf[sizeof(*value)];
+static ApduReply handle_provide_trusted_info_internal(void) {
+    // Main structure that will received the parsed TLV data
+    tlv_out_t tlv_extracted;
+    memset(&tlv_extracted, 0, sizeof(tlv_extracted));
 
-    if (value != NULL) {
-        if (payload->buf[*offset] & DER_LONG_FORM_FLAG) {  // long form
-            byte_length = payload->buf[*offset] & DER_FIRST_BYTE_VALUE_MASK;
-            *offset += 1;
-            if ((*offset + byte_length) > payload->size) {
-                PRINTF("TLV payload too small for DER encoded value\n");
-            } else {
-                if (byte_length > sizeof(buf) || byte_length == 0) {
-                    PRINTF("Unexpectedly long DER-encoded value (%u bytes)\n", byte_length);
-                } else {
-                    memset(buf, 0, (sizeof(buf) - byte_length));
-                    memcpy(buf + (sizeof(buf) - byte_length), &payload->buf[*offset], byte_length);
-                    *value = U4BE(buf, 0);
-                    *offset += byte_length;
-                    ret = true;
-                }
-            }
-        } else {  // short form
-            *value = payload->buf[*offset];
-            *offset += 1;
-            ret = true;
-        }
-    }
-    return ret;
-}
+    // Will be filled by the parser with the flags of received tags
+    uint32_t received_tags_flags = 0;
 
-/**
- * Get DER-encoded value as an uint8
- *
- * Parses the value and checks if it fits in the given \ref uint8_t value
- *
- * @param[in] payload the TLV payload
- * @param[in,out] offset
- * @param[out] value the parsed value
- * @return whether it was successful
- */
-static bool get_der_value_as_uint8(const s_tlv_payload *payload, size_t *offset, uint8_t *value) {
-    bool ret = false;
-    uint32_t tmp_value;
+    // The parser will fill it with the hash of the whole TLV payload (except SIGN tag)
+    uint8_t tlv_hash[INT256_LENGTH] = {0};
 
-    if (value != NULL) {
-        if (!parse_der_value(payload, offset, &tmp_value)) {
-        } else {
-            if (tmp_value <= UINT8_MAX) {
-                *value = tmp_value;
-                ret = true;
-            } else {
-                PRINTF("TLV DER-encoded value larger than 8 bits\n");
-            }
-        }
-    }
-    return ret;
-}
-
-/**
- * Parse the TLV payload
- *
- * Does the TLV parsing but also the SHA-256 hash of the payload.
- *
- * @param[in] payload the raw TLV payload
- * @param[out] trusted_name_info the trusted name information
- * @param[out] sig_ctx the signature context
- * @return whether it was successful
- */
-static bool parse_tlv(const s_tlv_payload *payload,
-                      s_trusted_name_info *trusted_name_info,
-                      s_sig_ctx *sig_ctx) {
-    s_tlv_handler handlers[] = {
+    // Mapping of tags to handler functions. Given to the parser
+    tlv_handler_t handlers[TLV_COUNT] = {
         {.tag = STRUCT_TYPE, .func = &handle_struct_type},
         {.tag = STRUCT_VERSION, .func = &handle_struct_version},
         {.tag = TRUSTED_NAME_TYPE, .func = &handle_trusted_name_type},
         {.tag = TRUSTED_NAME_SOURCE, .func = &handle_trusted_name_source},
+        {.tag = TRUSTED_NAME_NFT_ID, .func = NULL},
         {.tag = TRUSTED_NAME, .func = &handle_trusted_name},
         {.tag = CHAIN_ID, .func = &handle_chain_id},
         {.tag = ADDRESS, .func = &handle_address},
         {.tag = SOURCE_CONTRACT, .func = &handle_source_contract},
         {.tag = CHALLENGE, .func = &handle_challenge},
+        {.tag = NOT_VALID_AFTER, .func = NULL},
         {.tag = SIGNER_KEY_ID, .func = &handle_sign_key_id},
         {.tag = SIGNER_ALGO, .func = &handle_sign_algo},
         {.tag = SIGNATURE, .func = &handle_signature},
     };
-    e_tlv_step step = TLV_TAG;
-    s_tlv_data data;
-    size_t offset = 0;
-    size_t tag_start_off;
 
-    for (size_t i = 0; i < ARRAYLEN(handlers); ++i) handlers[i].rcv_bit = i;
-    cx_sha256_init(&sig_ctx->hash_ctx);
-    // handle TLV payload
-    while (offset < payload->size) {
-        switch (step) {
-            case TLV_TAG:
-                tag_start_off = offset;
-                if (!get_der_value_as_uint8(payload, &offset, &data.tag)) {
-                    return false;
-                }
-                step = TLV_LENGTH;
-                break;
+    PRINTF("Received chunk of trusted info, length = %d\n", G_command.message_length);
 
-            case TLV_LENGTH:
-                if (!get_der_value_as_uint8(payload, &offset, &data.length)) {
-                    return false;
-                }
-                step = TLV_VALUE;
-                break;
+    // Convert G_command to buffer_t format. 0 copy
+    buffer_t payload;
+    payload.ptr = G_command.message;
+    payload.size = G_command.message_length;
 
-            case TLV_VALUE:
-                if ((offset + data.length) > payload->size) {
-                    PRINTF("Error: value would go beyond the TLV payload!\n");
-                    return false;
-                }
-                data.value = &payload->buf[offset];
-                if (!handle_tlv_data(handlers,
-                                     (sizeof(handlers) / sizeof(handlers[0])),
-                                     &data,
-                                     trusted_name_info,
-                                     sig_ctx)) {
-                    return false;
-                }
-                offset += data.length;
-                if (data.tag != SIGNATURE) {  // the signature wasn't computed on itself
-                    CX_ASSERT(cx_hash_no_throw((cx_hash_t *) &sig_ctx->hash_ctx,
-                                               0,
-                                               &payload->buf[tag_start_off],
-                                               (offset - tag_start_off),
-                                               NULL,
-                                               0));
-                }
-                step = TLV_TAG;
-                break;
-
-            default:
-                return false;
-        }
-    }
-    if (step != TLV_TAG) {
-        PRINTF("Error: unexpected data at the end of the TLV payload!\n");
-        return false;
-    }
-    return verify_struct(trusted_name_info);
-}
-
-/**
- * Deallocate and unassign TLV payload
- *
- * @param[in] payload payload structure
- */
-static void free_payload(s_tlv_payload *payload) {
-    memset(tlv_buffer, 0, sizeof(tlv_buffer));
-    memset(payload, 0, sizeof(*payload));
-}
-
-static bool init_tlv_payload(uint8_t length, s_tlv_payload *payload) {
-    // check if no payload is already in memory
-    if (payload->buf != NULL) {
-        free_payload(payload);
-        return false;
+    // Call the parser to extract the raw TLV payload into our parsed structure
+    if (!parse_tlv(handlers,
+                   ARRAY_LENGTH(handlers),
+                   &payload,
+                   &tlv_extracted,
+                   SIGNATURE,
+                   tlv_hash,
+                   &received_tags_flags)) {
+        PRINTF("Failed to parse tlv payload\n");
+        return ApduReplySolanaInvalidTrustedInfo;
     }
 
-    payload->buf = tlv_buffer;
-    payload->expected_size = length;
+    // Verify that the fields received are correct in our context
+    if (verify_struct(&tlv_extracted, received_tags_flags) != 0) {
+        PRINTF("Failed to verify tlv payload\n");
+        return ApduReplySolanaInvalidTrustedInfo;
+    }
 
-    return true;
+    // Verify that the signature field of the TLV is the signature of the TLV hash by the key loaded
+    // by the PKI
+    if (check_signature_with_pubkey(tlv_hash,
+                                    INT256_LENGTH,
+                                    CERTIFICATE_PUBLIC_KEY_USAGE_TRUSTED_NAME,
+                                    CX_CURVE_SECP256K1,
+                                    tlv_extracted.input_sig) != 0) {
+        PRINTF("Failed to verify signature of trusted name info\n");
+        return ApduReplySolanaInvalidTrustedInfo;
+    }
+
+    // We have received 3 addresses in string base58 format.
+    // We will save this decode them and save both the encoded and decoded format.
+    // We could save just one but as we need to decode them to ensure they are valid we save both
+
+    if (copy_and_decode_pubkey(tlv_extracted.encoded_owner_address,
+                               g_trusted_info.encoded_owner_address,
+                               g_trusted_info.owner_address) != 0) {
+        PRINTF("copy_and_decode_pubkey error for encoded_owner_address\n");
+        return ApduReplySolanaInvalidTrustedInfo;
+    }
+
+    if (copy_and_decode_pubkey(tlv_extracted.encoded_token_address,
+                               g_trusted_info.encoded_token_address,
+                               g_trusted_info.token_address) != 0) {
+        PRINTF("copy_and_decode_pubkey error for encoded_token_address\n");
+        return ApduReplySolanaInvalidTrustedInfo;
+    }
+
+    if (copy_and_decode_pubkey(tlv_extracted.encoded_mint_address,
+                               g_trusted_info.encoded_mint_address,
+                               g_trusted_info.mint_address) != 0) {
+        PRINTF("copy_and_decode_pubkey error for encoded_mint_address\n");
+        return ApduReplySolanaInvalidTrustedInfo;
+    }
+
+    g_trusted_info.received = true;
+
+    PRINTF("=== TRUSTED INFO ===\n");
+    PRINTF("encoded_owner_address = %s\n", g_trusted_info.encoded_owner_address);
+    PRINTF("owner_address         = %.*H\n", PUBKEY_LENGTH, g_trusted_info.owner_address);
+    PRINTF("encoded_token_address = %s\n", g_trusted_info.encoded_token_address);
+    PRINTF("token_address         = %.*H\n", PUBKEY_LENGTH, g_trusted_info.token_address);
+    PRINTF("encoded_mint_address  = %s\n", g_trusted_info.encoded_mint_address);
+    PRINTF("mint_address          = %.*H\n", PUBKEY_LENGTH, g_trusted_info.mint_address);
+
+    return ApduReplySuccess;
 }
 
-/**
- * Handle provide trusted info APDU
- *
- * @param[in] is_first_chunk first APDU instruction parameter
- * @param[in] data APDU payload
- * @param[in] length payload size
- */
+// Wrapper around handle_provide_trusted_info_internal to handle the challenge reroll
 void handle_provide_trusted_info(void) {
-    s_sig_ctx sig_ctx;
-
-    uint8_t *data = G_command.message;
-    uint8_t data_length = G_command.message_length;
-
-    PRINTF("Received chunk of trusted info, length = %d\n", data_length);
-    if (!init_tlv_payload(data_length, &g_tlv_payload)) {
-        free_payload(&g_tlv_payload);
-        PRINTF("Error while initializing TLV payload\n");
-        THROW(ApduReplySolanaInvalidTrustedInfo);
-    }
-
-    PRINTF("Expected size of trusted info: %d\n", g_tlv_payload.expected_size);
-
-    if ((g_tlv_payload.size + data_length) > g_tlv_payload.expected_size) {
-        free_payload(&g_tlv_payload);
-        PRINTF("TLV payload size mismatch!\n");
-        THROW(ApduReplySolanaInvalidTrustedInfo);
-    }
-    // feed into tlv payload
-    memcpy(g_tlv_payload.buf + g_tlv_payload.size, data, data_length);
-    g_tlv_payload.size += data_length;
-
-    PRINTF("Received %d bytes of trusted info\n", g_tlv_payload.size);
-
-    // everything has been received
-    if (g_tlv_payload.size == g_tlv_payload.expected_size) {
-        g_trusted_name_info.owner = g_trusted_token_account_owner_pubkey;
-        g_trusted_token_account_owner_pubkey_set = true;
-        if (!parse_tlv(&g_tlv_payload, &g_trusted_name_info, &sig_ctx) ||
-            !verify_signature(&sig_ctx)) {
-            free_payload(&g_tlv_payload);
-            roll_challenge();  // prevent brute-force guesses
-            g_trusted_name_info.rcv_flags = 0;
-            memset(g_trusted_token_account_owner_pubkey,
-                   0,
-                   sizeof(g_trusted_token_account_owner_pubkey));
-            g_trusted_token_account_owner_pubkey_set = false;
-            THROW(ApduReplySolanaInvalidTrustedInfo);
-        }
-
-        PRINTF("Token account : %s owned by %s\n",
-               g_trusted_name_info.token_account,
-               g_trusted_token_account_owner_pubkey);
-
-        free_payload(&g_tlv_payload);
-        roll_challenge();  // prevent replays
-        THROW(ApduReplySuccess);
-    }
-    THROW(ApduReplySolanaInvalidTrustedInfo);
+    trusted_info_reset(&g_trusted_info);
+    ApduReply ret = handle_provide_trusted_info_internal();
+    // prevent brute-force guesses
+    roll_challenge();
+    // TODO: use no throw model
+    THROW(ret);
 }

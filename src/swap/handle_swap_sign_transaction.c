@@ -99,7 +99,11 @@ bool check_swap_amount(const char *title, const char *text) {
     }
 
     char validated_amount[MAX_PRINTABLE_AMOUNT_SIZE];
-    if (print_token_amount(G_swap_validated.amount, G_swap_validated.ticker, G_swap_validated.decimals, validated_amount, sizeof(validated_amount)) != 0) {
+    if (print_token_amount(G_swap_validated.amount,
+                           G_swap_validated.ticker,
+                           G_swap_validated.decimals,
+                           validated_amount,
+                           sizeof(validated_amount)) != 0) {
         PRINTF("Conversion failed\n");
         return false;
     }

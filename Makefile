@@ -38,7 +38,7 @@ APPNAME = "Solana"
 APPVERSION_M = 1
 APPVERSION_N = 7
 APPVERSION_P = 0
-APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)-splswapv1"
+APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)-splswapv2"
 
 # Application source files
 APP_SOURCE_PATH += src
@@ -95,6 +95,7 @@ DISABLE_STANDARD_APP_FILES = 1
 # Allow usage of function from lib_standard_app/crypto_helpers.c
 APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/crypto_helpers.c
 APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/swap_utils.c
+APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/base58.c
 CFLAGS           += -I${BOLOS_SDK}/lib_standard_app/
 
 WITH_U2F?=0
@@ -103,6 +104,8 @@ ifneq ($(WITH_U2F),0)
     DEFINES         += U2F_PROXY_MAGIC=\"~SOL\"
 		SDK_SOURCE_PATH += lib_u2f
 endif
+
+DEFINES += HAVE_SDK_TLV_PARSER
 
 WITH_LIBSOL?=1
 ifneq ($(WITH_LIBSOL),0)
@@ -116,9 +119,14 @@ endif
 #######################################
 # Trusted Name Test Mode              #
 #######################################
-TRUSTED_NAME_TEST ?= 0
-ifneq ($(TRUSTED_NAME_TEST),0)
-  DEFINES += HAVE_TRUSTED_NAME_TEST
+TRUSTED_NAME_TEST_KEY ?= 0
+ifneq ($(TRUSTED_NAME_TEST_KEY),0)
+  DEFINES += TRUSTED_NAME_TEST_KEY
+endif
+
+FIXED_TLV_CHALLENGE ?= 0
+ifneq ($(FIXED_TLV_CHALLENGE),0)
+  DEFINES += FIXED_TLV_CHALLENGE
 endif
 
 include $(BOLOS_SDK)/Makefile.standard_app
