@@ -35,7 +35,11 @@ int handle_get_printable_amount(get_printable_amount_parameters_t* params) {
             PRINTF("Fail to parse coin_configuration\n");
             return 0;
         }
-        if (print_token_amount(amount, ticker, decimals, params->printable_amount, sizeof(params->printable_amount)) != 0) {
+        if (print_token_amount(amount,
+                               ticker,
+                               decimals,
+                               params->printable_amount,
+                               sizeof(params->printable_amount)) != 0) {
             PRINTF("print_amount failed");
             return 0;
         }
