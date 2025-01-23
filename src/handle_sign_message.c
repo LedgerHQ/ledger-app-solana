@@ -59,6 +59,7 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
     print_config.signer_pubkey = &header->pubkeys[signer_index];
 
     if (G_command.non_confirm) {
+        PRINTF("G_command.non_confirm refused\n");
         // Uncomment this to allow unattended signing.
         //*tx = set_result_sign_message();
         // THROW(ApduReplySuccess);
@@ -69,8 +70,14 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
     // Set the transaction summary
     transaction_summary_reset();
     if (process_message_body(parser.buffer, parser.buffer_length, &print_config) != 0) {
-        // Message not processed, throw if blind signing is not enabled
-        if (N_storage.settings.allow_blind_sign == BlindSignEnabled) {
+        // Message not processed, throw if blind signing is not enabled or in swap context
+        if (G_called_from_swap) {
+            PRINTF("Refuse to process blind transaction in swap context\n");
+            THROW(ApduReplySdkNotSupported);
+        } else if (N_storage.settings.allow_blind_sign != BlindSignEnabled) {
+            PRINTF("Blind signing is not enabled\n");
+            THROW(ApduReplySdkNotSupported);
+        } else {
             SummaryItem *item = transaction_summary_primary_item();
             summary_item_set_string(item, "Unrecognized", "format");
 
@@ -81,8 +88,6 @@ void handle_sign_message_parse_message(volatile unsigned int *tx) {
 
             item = transaction_summary_general_item();
             summary_item_set_hash(item, "Message Hash", &G_command.message_hash);
-        } else {
-            THROW(ApduReplySdkNotSupported);
         }
     }
 
@@ -157,15 +162,7 @@ static bool check_swap_validity_token(const SummaryItemKind_t kinds[MAX_TRANSACT
     bool mint_ok = false;
     bool dest_ata_ok = false;
     bool dest_sol_address_ok = false;
-    uint8_t expected_steps = 5;
-
-    // Accept base step number + optional fee step
-    if (num_summary_steps != expected_steps && num_summary_steps != expected_steps + 1) {
-        PRINTF("%d steps expected for token transaction in swap context, not %u\n",
-               expected_steps,
-               num_summary_steps);
-        return false;
-    }
+    bool create_token_account_received = false;
 
     if (!g_trusted_info.received) {
         // This case should never happen because this is already checked at TX parsing
@@ -196,6 +193,10 @@ static bool check_swap_validity_token(const SummaryItemKind_t kinds[MAX_TRANSACT
                     PRINTF("check_swap_amount failed\n");
                     return false;
                 }
+                if (amount_ok) {
+                    PRINTF("We have already parsed an amount, refusing signing multiple\n");
+                    return false;
+                }
                 amount_ok = true;
                 break;
 
@@ -207,7 +208,25 @@ static bool check_swap_validity_token(const SummaryItemKind_t kinds[MAX_TRANSACT
                 break;
 
             case SummaryItemPubkey:
-                if (strcmp(G_transaction_summary_title, "Token address") == 0) {
+                if (strcmp(G_transaction_summary_title, "Create token account") == 0) {
+                    if (strcmp(g_trusted_info.encoded_token_address, G_transaction_summary_text) != 0) {
+                        PRINTF("ATA address of create token account does not match with mint address in descriptor\n");
+                        return false;
+                    }
+                    create_token_account_received = true;
+                } else if (strcmp(G_transaction_summary_title, "For") == 0) {
+                    if (!create_token_account_received) {
+                        PRINTF("'For' received out of create_token_account context\n");
+                        return false;
+                    }
+                    break;
+                } else if (strcmp(G_transaction_summary_title, "Funded by") == 0) {
+                    if (!create_token_account_received) {
+                        PRINTF("'Funded by' received out of create_token_account context\n");
+                        return false;
+                    }
+                    break;
+                } else if (strcmp(G_transaction_summary_title, "Token address") == 0) {
                     // MINT
                     if (strcmp(g_trusted_info.encoded_mint_address, G_transaction_summary_text) != 0) {
                         // This case should never happen because this is already checked at TX parsing
