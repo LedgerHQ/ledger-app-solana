@@ -5,7 +5,6 @@
 #include "sol/transaction_summary.h"
 #include "token_info.h"
 #include "util.h"
-#include "base58.h"
 #include "globals.h"
 #include "ed25519_helpers.h"
 #include "sol/trusted_info.h"

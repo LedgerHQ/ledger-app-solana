@@ -34,7 +34,7 @@ static bool is_on_curve_internal(const uint8_t compressed_point[PUBKEY_LENGTH]) 
     return is_on_curve;
 }
 
-bool is_on_curve(const uint8_t compressed_point[PUBKEY_LENGTH]) {
+static bool is_on_curve(const uint8_t compressed_point[PUBKEY_LENGTH]) {
     CX_ASSERT(cx_bn_lock(PUBKEY_LENGTH, 0));
     bool is_on_curve = is_on_curve_internal(compressed_point);
     if (cx_bn_is_locked()) {

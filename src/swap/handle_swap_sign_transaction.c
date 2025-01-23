@@ -82,19 +82,8 @@ bool copy_transaction_parameters(create_transaction_parameters_t *params) {
 }
 
 // Check that the amount in parameter is the same as the previously saved amount
-bool check_swap_amount(const char *title, const char *text) {
+bool check_swap_amount(const char *text) {
     if (!G_swap_validated.initialized) {
-        return false;
-    }
-
-    char expected_title[MAX(sizeof("Transfer tokens"), sizeof("Transfer"))] = {'\0'};
-    if (is_token_transaction()) {
-        strcpy(expected_title, "Transfer tokens");
-    } else {
-        strcpy(expected_title, "Transfer");
-    }
-    if (strcmp(title, expected_title) != 0) {
-        PRINTF("Refused title '%s', expecting '%s'\n", title, expected_title);
         return false;
     }
 
@@ -118,19 +107,8 @@ bool check_swap_amount(const char *title, const char *text) {
 }
 
 // Check that the recipient in parameter is the same as the previously saved recipient
-bool check_swap_recipient(const char *title, const char *text) {
+bool check_swap_recipient(const char *text) {
     if (!G_swap_validated.initialized) {
-        return false;
-    }
-
-    char expected_title[MAX(sizeof("To (token account)"), sizeof("Recipient"))] = {'\0'};
-    if (is_token_transaction()) {
-        strcpy(expected_title, "To (token account)");
-    } else {
-        strcpy(expected_title, "Recipient");
-    }
-    if (strcmp(title, expected_title) != 0) {
-        PRINTF("Refused title '%s', expecting '%s'\n", title, expected_title);
         return false;
     }
 

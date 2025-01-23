@@ -112,6 +112,9 @@ void app_main(void) {
     reset_getpubkey_globals();
     reset_main_globals();
 
+    // to prevent it from having a fixed value at boot
+    roll_challenge();
+
     // DESIGN NOTE: the bootloader ignores the way APDU are fetched. The only
     // goal is to retrieve APDU.
     // When APDU are to be fetched from multiple IOs, like NFC+USB+BLE, make
@@ -222,9 +225,6 @@ void coin_main(void) {
                 BLE_power(0, NULL);
                 BLE_power(1, NULL);
 #endif  // HAVE_BLE
-
-                // to prevent it from having a fixed value at boot
-                roll_challenge();
 
                 app_main();
             }
