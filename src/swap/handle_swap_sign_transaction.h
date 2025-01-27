@@ -6,6 +6,8 @@ bool copy_transaction_parameters(create_transaction_parameters_t *sign_transacti
 
 bool check_swap_amount(const char *text);
 
+bool check_swap_fee(const char *text);
+
 bool check_swap_recipient(const char *text);
 
 bool is_token_transaction();

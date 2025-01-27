@@ -12,6 +12,7 @@ typedef struct swap_validated_s {
     uint8_t decimals;
     char ticker[MAX_SWAP_TOKEN_LENGTH];
     uint64_t amount;
+    uint64_t fee;
     char recipient[BASE58_PUBKEY_LENGTH];
 } swap_validated_t;
 
@@ -67,6 +68,11 @@ bool copy_transaction_parameters(create_transaction_parameters_t *params) {
         return false;
     }
 
+    // Save amount
+    if (!swap_str_to_u64(params->fee_amount, params->fee_amount_length, &swap_validated.fee)) {
+        return false;
+    }
+
     swap_validated.initialized = true;
 
     // Full reset the global variables
@@ -102,6 +108,75 @@ bool check_swap_amount(const char *text) {
         PRINTF("Amount requested in this transaction = %s\n", text);
         PRINTF("Amount validated in swap = %s\n", validated_amount);
         return false;
+    }
+}
+
+bool is_valid_char(char c) {
+    return (c == '.' || (c >= '0' && c <= '9'));
+}
+
+bool check_swap_fee(const char *text) {
+    if (!G_swap_validated.initialized) {
+        return false;
+    }
+
+    char validated_fee[MAX_PRINTABLE_AMOUNT_SIZE] = {0};
+    if (print_amount(G_swap_validated.fee, validated_fee, sizeof(validated_fee)) != 0) {
+        PRINTF("Conversion failed\n");
+        return false;
+    }
+    if (validated_fee[MAX_PRINTABLE_AMOUNT_SIZE - 1] != '\0') {
+        PRINTF("Error in formatting, aborting check\n");
+        return false;
+    }
+
+    PRINTF("Fee requested in this transaction = %s\n", text);
+    PRINTF("Fee validated in swap = %s\n", validated_fee);
+    if (strcmp(text, validated_fee) == 0) {
+        PRINTF("Fees are the exact same");
+        return true;
+    } else {
+        // Check that we are paying LESS than promised
+        // Expected format is 'X.Y SOL' anything else is an error
+        uint8_t pos = 0;
+        char current_text;
+        char current_validated;
+        do {
+            current_text = text[pos];
+            current_validated = validated_fee[pos];
+            if (!is_valid_char(current_text)) {
+                PRINTF("!is_valid_char(current_text) %c\n", current_text);
+                return false;
+            }
+            if (!is_valid_char(current_validated)) {
+                PRINTF("!is_valid_char(current_validated) %c\n", current_validated);
+                return false;
+            }
+            if (current_text != current_validated) {
+                // period char is smaller than all integers char, and they are themselves ordered
+                PRINTF("Checking current_text %c vs current_validated %c\n",
+                       current_text,
+                       current_validated);
+                return (current_text < current_validated);
+            } else {
+                // Keep looking for a diff
+                ++pos;
+            }
+        } while ((current_text != '\0' && current_text != ' ') &&
+                 (current_validated != ' ' && current_validated != '\0'));
+
+        if (current_text == '\0' || current_validated == '\0') {
+            PRINTF("ERROR: unexpectedly reached end of string\n");
+            return false;
+        }
+
+        if (current_text == ' ' && current_validated == ' ') {
+            PRINTF("ERROR: both strings encountered simultaneous end: tickers differ\n");
+            return false;
+        }
+
+        // current_text is smaller if it ends first, if all previous characters are the same
+        return (current_text == ' ');
     }
 }
 

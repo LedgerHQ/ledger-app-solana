@@ -122,16 +122,19 @@ static bool check_swap_validity_native(const SummaryItemKind_t kinds[MAX_TRANSAC
         switch (kinds[i]) {
             case SummaryItemAmount:
                 if (strcmp(G_transaction_summary_title, "Max fees") == 0) {
-                    break;
-                }
-                if (strcmp(G_transaction_summary_title, "Transfer") != 0) {
+                    if (!check_swap_fee(G_transaction_summary_text)) {
+                        PRINTF("check_swap_fee failed\n");
+                        return false;
+                    }
+                } else if (strcmp(G_transaction_summary_title, "Transfer") == 0) {
+                    if (!check_swap_amount(G_transaction_summary_text)) {
+                        PRINTF("check_swap_amount failed\n");
+                        return false;
+                    }
+                } else {
                     PRINTF("Refused title '%s', expecting '%s'\n",
                            G_transaction_summary_title,
                            "Transfer");
-                    return false;
-                }
-                if (!check_swap_amount(G_transaction_summary_text)) {
-                    PRINTF("check_swap_amount failed\n");
                     return false;
                 }
                 amount_ok = true;
@@ -207,8 +210,13 @@ static bool check_swap_validity_token(const SummaryItemKind_t kinds[MAX_TRANSACT
                 break;
 
             case SummaryItemAmount:
-                if (strcmp(G_transaction_summary_title, "Max fees") != 0) {
-                    PRINTF("Refuse non fee amount in token swap context\n");
+                if (strcmp(G_transaction_summary_title, "Max fees") == 0) {
+                    if (!check_swap_fee(G_transaction_summary_text)) {
+                        PRINTF("check_swap_fee failed\n");
+                        return false;
+                    }
+                } else {
+                    PRINTF("Refusing non fee amount in token swap context\n");
                     return false;
                 }
                 break;
