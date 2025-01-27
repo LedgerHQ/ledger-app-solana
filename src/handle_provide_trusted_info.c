@@ -31,7 +31,7 @@
 trusted_info_t g_trusted_info;
 
 static void trusted_info_reset(trusted_info_t *trusted_info) {
-    explicit_bzero(trusted_info, sizeof(trusted_info));
+    explicit_bzero(trusted_info, sizeof(*trusted_info));
 }
 
 static bool handle_struct_type(const tlv_data_t *data, tlv_out_t *tlv_extracted) {
@@ -109,6 +109,12 @@ static int copy_and_decode_pubkey(const buffer_t in_encoded_address,
     // Should be caught at parsing but let's double check
     if (in_encoded_address.size >= BASE58_PUBKEY_LENGTH) {
         PRINTF("Input address size exceeds buffer length\n");
+        return -1;
+    }
+
+    // Should be caught at parsing but let's double check
+    if (in_encoded_address.size == 0) {
+        PRINTF("Input address size is 0\n");
         return -1;
     }
 

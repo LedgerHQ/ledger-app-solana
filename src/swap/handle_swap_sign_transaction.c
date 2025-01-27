@@ -4,9 +4,8 @@
 #include "swap_lib_calls.h"
 #include "swap_utils.h"
 #include "sol/printer.h"
+#include "swap_common.h"
 #include "util.h"
-
-#define MAX_SWAP_TOKEN_LENGTH 15
 
 typedef struct swap_validated_s {
     bool initialized;
