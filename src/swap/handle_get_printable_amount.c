@@ -3,8 +3,7 @@
 #include "swap_utils.h"
 #include "utils.h"
 #include "sol/printer.h"
-
-#define MAX_SWAP_TOKEN_LENGTH 15
+#include "swap_common.h"
 
 /* return 0 on error, 1 otherwise */
 int handle_get_printable_amount(get_printable_amount_parameters_t* params) {

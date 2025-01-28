@@ -125,7 +125,9 @@ static bool check_swap_validity_native(const SummaryItemKind_t kinds[MAX_TRANSAC
                     break;
                 }
                 if (strcmp(G_transaction_summary_title, "Transfer") != 0) {
-                    PRINTF("Refused title '%s', expecting '%s'\n", G_transaction_summary_title, "Transfer");
+                    PRINTF("Refused title '%s', expecting '%s'\n",
+                           G_transaction_summary_title,
+                           "Transfer");
                     return false;
                 }
                 if (!check_swap_amount(G_transaction_summary_text)) {
@@ -137,7 +139,9 @@ static bool check_swap_validity_native(const SummaryItemKind_t kinds[MAX_TRANSAC
 
             case SummaryItemPubkey:
                 if (strcmp(G_transaction_summary_title, "Recipient") != 0) {
-                    PRINTF("Refused title '%s', expecting '%s'\n", G_transaction_summary_title, "Recipient");
+                    PRINTF("Refused title '%s', expecting '%s'\n",
+                           G_transaction_summary_title,
+                           "Recipient");
                     return false;
                 }
                 if (!check_swap_recipient(G_transaction_summary_text)) {
@@ -186,7 +190,9 @@ static bool check_swap_validity_token(const SummaryItemKind_t kinds[MAX_TRANSACT
         switch (kinds[i]) {
             case SummaryItemTokenAmount:
                 if (strcmp(G_transaction_summary_title, "Transfer tokens") != 0) {
-                    PRINTF("Refused title '%s', expecting '%s'\n", G_transaction_summary_title, "Transfer tokens");
+                    PRINTF("Refused title '%s', expecting '%s'\n",
+                           G_transaction_summary_title,
+                           "Transfer tokens");
                     return false;
                 }
                 if (!check_swap_amount(G_transaction_summary_text)) {
@@ -209,8 +215,9 @@ static bool check_swap_validity_token(const SummaryItemKind_t kinds[MAX_TRANSACT
 
             case SummaryItemPubkey:
                 if (strcmp(G_transaction_summary_title, "Create token account") == 0) {
-                    if (strcmp(g_trusted_info.encoded_token_address, G_transaction_summary_text) != 0) {
-                        PRINTF("ATA address of create token account does not match with mint address in descriptor\n");
+                    if (strcmp(g_trusted_info.encoded_token_address, G_transaction_summary_text) !=
+                        0) {
+                        PRINTF("Create ATA address does not match with address in descriptor\n");
                         return false;
                     }
                     create_token_account_received = true;
@@ -228,8 +235,10 @@ static bool check_swap_validity_token(const SummaryItemKind_t kinds[MAX_TRANSACT
                     break;
                 } else if (strcmp(G_transaction_summary_title, "Token address") == 0) {
                     // MINT
-                    if (strcmp(g_trusted_info.encoded_mint_address, G_transaction_summary_text) != 0) {
-                        // This case should never happen because this is already checked at TX parsing
+                    if (strcmp(g_trusted_info.encoded_mint_address, G_transaction_summary_text) !=
+                        0) {
+                        // This case should never happen because this is already checked at TX
+                        // parsing
                         PRINTF("Mint address does not match with mint address in descriptor\n");
                         return false;
                     }
@@ -239,8 +248,10 @@ static bool check_swap_validity_token(const SummaryItemKind_t kinds[MAX_TRANSACT
                     break;
                 } else if (strcmp(G_transaction_summary_title, "To (token account)") == 0) {
                     // Destination ATA
-                    if (strcmp(g_trusted_info.encoded_token_address, G_transaction_summary_text) != 0) {
-                        // This case should never happen because this is already checked at TX parsing
+                    if (strcmp(g_trusted_info.encoded_token_address, G_transaction_summary_text) !=
+                        0) {
+                        // This case should never happen because this is already checked at TX
+                        // parsing
                         PRINTF("Dest ATA address does not match with ATA in descriptor\n");
                         return false;
                     }
