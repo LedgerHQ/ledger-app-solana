@@ -1,3 +1,4 @@
+#include "os.h"
 #include "common_byte_strings.h"
 #include "instruction.h"
 #include "sol/parser.h"
@@ -6,6 +7,11 @@
 #include "spl_token2022_instruction.h"
 #include "token_info.h"
 #include "util.h"
+#include "globals.h"
+#include "ed25519_helpers.h"
+#include "sol/trusted_info.h"
+
+#include "spl_token_instruction.h"
 
 const Pubkey spl_token_program_id = {{PROGRAM_ID_SPL_TOKEN}};
 
@@ -161,6 +167,46 @@ static int parse_transfer_spl_token_instruction(Parser* parser,
     BAIL_IF(instruction_accounts_iterator_next(&it, &info->dest_account));
 
     BAIL_IF(parse_spl_token_sign(&it, &info->sign));
+
+    // Here we will check the content of the SPL transaction against the received descriptor
+    if (!g_trusted_info.received) {
+        PRINTF("Descriptor info is required for a SPL transfer\n");
+        return -1;
+    }
+
+    // We have received a destination ATA, we will validate it by comparing it against the
+    // derivation of the owner address + mint address
+    // We must have received the owner address from the descriptor for this
+
+    PRINTF("=== TX INFO ===\n");
+    PRINTF("src_account           = %.*H\n", PUBKEY_LENGTH, info->src_account->data);
+    PRINTF("mint_account          = %.*H\n", PUBKEY_LENGTH, info->mint_account->data);
+    PRINTF("dest_account          = %.*H\n", PUBKEY_LENGTH, info->dest_account->data);
+
+    PRINTF("=== TRUSTED INFO ===\n");
+    PRINTF("encoded_owner_address = %s\n", g_trusted_info.encoded_owner_address);
+    PRINTF("owner_address         = %.*H\n", PUBKEY_LENGTH, g_trusted_info.owner_address);
+    PRINTF("encoded_token_address = %s\n", g_trusted_info.encoded_token_address);
+    PRINTF("token_address         = %.*H\n", PUBKEY_LENGTH, g_trusted_info.token_address);
+    PRINTF("encoded_mint_address  = %s\n", g_trusted_info.encoded_mint_address);
+    PRINTF("mint_address          = %.*H\n", PUBKEY_LENGTH, g_trusted_info.mint_address);
+
+    if (memcmp(g_trusted_info.mint_address, info->mint_account->data, PUBKEY_LENGTH) != 0) {
+        PRINTF("Mint address does not match with mint address in descriptor\n");
+        return -1;
+    }
+
+    if (memcmp(g_trusted_info.token_address, info->dest_account->data, PUBKEY_LENGTH) != 0) {
+        PRINTF("Token address does not match with token address in descriptor\n");
+        return -1;
+    }
+
+    if (!validate_associated_token_address(g_trusted_info.owner_address,
+                                           info->mint_account->data,
+                                           info->dest_account->data)) {
+        PRINTF("Failed to validate ATA\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -497,7 +543,7 @@ static int print_spl_token_initialize_account_info(const char* primary_title,
     summary_item_set_pubkey(item, "Owner", info->owner);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "Mint", info->mint_account);
+    summary_item_set_pubkey(item, "Token address", info->mint_account);
 
     return 0;
 }
@@ -539,11 +585,23 @@ int print_spl_token_transfer_info(const SplTokenTransferInfo* info,
                                   symbol,
                                   info->body.decimals);
 
-    item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "From", info->src_account);
+    // Already checked in parsing step but let's be secure
+    if (!g_trusted_info.received) {
+        PRINTF("Descriptor info is required for a SPL transfer\n");
+        return -1;
+    }
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "To", info->dest_account);
+    summary_item_set_string(item, "To", g_trusted_info.encoded_owner_address);
+
+    item = transaction_summary_general_item();
+    summary_item_set_pubkey(item, "Token address", info->mint_account);
+
+    item = transaction_summary_general_item();
+    summary_item_set_pubkey(item, "From (token account)", info->src_account);
+
+    item = transaction_summary_general_item();
+    summary_item_set_pubkey(item, "To (token account)", info->dest_account);
 
     if(is_token2022_kind){
         item = transaction_summary_general_item();
@@ -574,7 +632,10 @@ static int print_spl_token_approve_info(const SplTokenApproveInfo* info,
                                   info->body.decimals);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "From", info->token_account);
+    summary_item_set_pubkey(item, "Token address", info->mint_account);
+
+    item = transaction_summary_general_item();
+    summary_item_set_pubkey(item, "From (token account)", info->token_account);
 
     print_spl_token_sign(&info->sign, print_config);
 
@@ -636,13 +697,11 @@ static int print_spl_token_mint_to_info(const SplTokenMintToInfo* info,
                                   symbol,
                                   info->body.decimals);
 
-    if (print_config->expert_mode) {
-        item = transaction_summary_general_item();
-        summary_item_set_pubkey(item, "From", info->mint_account);
-    }
+    item = transaction_summary_general_item();
+    summary_item_set_pubkey(item, "Token address", info->mint_account);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "To", info->token_account);
+    summary_item_set_pubkey(item, "To (token account)", info->token_account);
 
     print_spl_token_sign(&info->sign, print_config);
 
@@ -664,7 +723,10 @@ static int print_spl_token_burn_info(const SplTokenBurnInfo* info,
                                   info->body.decimals);
 
     item = transaction_summary_general_item();
-    summary_item_set_pubkey(item, "From", info->token_account);
+    summary_item_set_pubkey(item, "Token address", info->mint_account);
+
+    item = transaction_summary_general_item();
+    summary_item_set_pubkey(item, "From (token account)", info->token_account);
 
     print_spl_token_sign(&info->sign, print_config);
 
@@ -678,7 +740,7 @@ static int print_spl_token_close_account_info(const SplTokenCloseAccountInfo* in
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
-    summary_item_set_pubkey(item, "Close acct", info->token_account);
+    summary_item_set_pubkey(item, "Close token account", info->token_account);
 
     item = transaction_summary_general_item();
     summary_item_set_pubkey(item, "Withdraw to", info->dest_account);
@@ -693,11 +755,11 @@ static int print_spl_token_freeze_account_info(const SplTokenFreezeAccountInfo* 
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
-    summary_item_set_pubkey(item, "Freeze acct", info->token_account);
+    summary_item_set_pubkey(item, "Freeze token account", info->token_account);
 
     if (print_config->expert_mode) {
         item = transaction_summary_general_item();
-        summary_item_set_pubkey(item, "Mint", info->mint_account);
+        summary_item_set_pubkey(item, "Token address", info->mint_account);
     }
 
     print_spl_token_sign(&info->sign, print_config);
@@ -710,11 +772,11 @@ static int print_spl_token_thaw_account_info(const SplTokenThawAccountInfo* info
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
-    summary_item_set_pubkey(item, "Thaw acct", info->token_account);
+    summary_item_set_pubkey(item, "Thaw token account", info->token_account);
 
     if (print_config->expert_mode) {
         item = transaction_summary_general_item();
-        summary_item_set_pubkey(item, "Mint", info->mint_account);
+        summary_item_set_pubkey(item, "Token address", info->mint_account);
     }
 
     print_spl_token_sign(&info->sign, print_config);
@@ -729,7 +791,7 @@ static int print_spl_token_sync_native_info(const SplTokenSyncNativeInfo* info,
     SummaryItem* item;
 
     item = transaction_summary_primary_item();
-    summary_item_set_pubkey(item, "Sync native acct", info->token_account);
+    summary_item_set_pubkey(item, "Sync native account", info->token_account);
 
     return 0;
 }

@@ -38,51 +38,60 @@ static int parse_unit_price_instruction(Parser* parse, ComputeBudgetChangeUnitPr
     return 0;
 }
 
-static int parse_loaded_accounts_data_size_limit(Parser* parse, ComputeBudgetSetLoadedAccountsDataSizeLimitInfo* info) {
+static int parse_loaded_accounts_data_size_limit(
+    Parser* parse,
+    ComputeBudgetSetLoadedAccountsDataSizeLimitInfo* info) {
     BAIL_IF(parse_u32(parse, &info->units));
 
     return 0;
 }
 
-static int print_compute_budget_unit_price(ComputeBudgetChangeUnitPriceInfo* info, const PrintConfig* print_config) {
-    UNUSED(print_config);
+static uint32_t calculate_max_fee(const ComputeBudgetFeeInfo* info) {
+    uint32_t max_fee = FEE_LAMPORTS_PER_SIGNATURE * info->signatures_count;
 
-    SummaryItem* item;
-
-    item = transaction_summary_general_item();
-    summary_item_set_u64(item, "Unit price", info->units);
-
-    return 0;
-}
-
-static int print_compute_budget_unit_limit(ComputeBudgetChangeUnitLimitInfo* info, const PrintConfig* print_config) {
-    UNUSED(print_config);
-
-    SummaryItem* item;
-
-    item = transaction_summary_general_item();
-    summary_item_set_u64(item, "Unit limit", info->units);
-
-    return 0;
-}
-
-int print_compute_budget(ComputeBudgetInfo* info, const PrintConfig* print_config) {
-    switch (info->kind) {
-        case ComputeBudgetChangeUnitLimit:
-            return print_compute_budget_unit_limit(&info->change_unit_limit, print_config);
-        case ComputeBudgetChangeUnitPrice:
-            return print_compute_budget_unit_price(&info->change_unit_price, print_config);
-        case ComputeBudgetRequestHeapFrame:
-        case ComputeBudgetSetLoadedAccountsDataSizeLimit:
-            break;
+    if (info->change_unit_price != NULL) {
+        uint32_t max_compute = 0;
+        if (info->change_unit_limit != NULL) {
+            max_compute = info->change_unit_limit->units;
+        } else {
+            max_compute =
+                MIN(info->instructions_count * MAX_CU_PER_INSTRUCTION, MAX_CU_PER_TRANSACTION);
+        }
+        return max_fee +
+               ((info->change_unit_price->units * max_compute) / MICRO_LAMPORT_MULTIPLIER);
     }
-    return 1;
+    return max_fee;
 }
 
-int parse_compute_budget_instructions(const Instruction* instruction, ComputeBudgetInfo* info) {
+static int print_compute_budget_max_fee(uint32_t max_fee, const PrintConfig* print_config) {
+    UNUSED(print_config);
+
+    SummaryItem* item;
+
+    item = transaction_summary_general_item();
+    summary_item_set_amount(item, "Max fees", max_fee);
+
+    return 0;
+}
+
+/**
+ * Display transaction max fees
+ * RequestHeapFrame and SetLoadedAccountsDataSizeLimit instruction kinds
+ * are omitted on purpose as they currently do not display any data on the screen
+ */
+void print_compute_budget(ComputeBudgetFeeInfo* info, const PrintConfig* print_config) {
+    uint32_t transaction_max_fee = calculate_max_fee(info);
+    print_compute_budget_max_fee(transaction_max_fee, print_config);
+}
+
+int parse_compute_budget_instructions(const Instruction* instruction,
+                                      const MessageHeader* header,
+                                      ComputeBudgetInfo* info) {
     Parser parser = {instruction->data, instruction->data_length};
 
     BAIL_IF(parse_compute_budget_instruction_kind(&parser, &info->kind));
+
+    info->signatures_count = header->pubkeys_header.num_required_signatures;
 
     switch (info->kind) {
         case ComputeBudgetRequestHeapFrame:
@@ -92,7 +101,9 @@ int parse_compute_budget_instructions(const Instruction* instruction, ComputeBud
         case ComputeBudgetChangeUnitPrice:
             return parse_unit_price_instruction(&parser, &info->change_unit_price);
         case ComputeBudgetSetLoadedAccountsDataSizeLimit:
-            return parse_loaded_accounts_data_size_limit(&parser, &info->set_loaded_accounts_data_size_limit);
+            return parse_loaded_accounts_data_size_limit(
+                &parser,
+                &info->set_loaded_accounts_data_size_limit);
         default:
             return 1;
     }

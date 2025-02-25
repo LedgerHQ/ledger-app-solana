@@ -274,8 +274,7 @@ static int print_system_transfer_info(const SystemTransferInfo* info,
     return 0;
 }
 
-int print_system_prefund_for_split(const SystemInfo* info,
-                                   const PrintConfig* print_config) {
+int print_system_prefund_for_split(const SystemInfo* info, const PrintConfig* print_config) {
     if (print_config->expert_mode) {
         const SystemTransferInfo* transfer_info = &info->transfer;
         SummaryItem* item;

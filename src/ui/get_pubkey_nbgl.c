@@ -1,4 +1,3 @@
-
 /*****************************************************************************
  *   Ledger App Solana
  *   (c) 2023 Ledger SAS.
@@ -19,43 +18,30 @@
 #ifdef HAVE_NBGL
 
 #include "handle_get_pubkey.h"
-#include "io.h"
+#include "io_utils.h"
 #include "sol/printer.h"
 #include "nbgl_use_case.h"
 #include "ui_api.h"
 #include "apdu.h"
 
-static void confirm_address_approval(void) {
-    // display a success status page and go back to main
-    sendResponse(set_result_get_pubkey(), ApduReplySuccess, false);
-    nbgl_useCaseStatus("ADDRESS\nVERIFIED", true, ui_idle);
-}
-
-static void confirm_address_rejection(void) {
-    // display a status page and go back to main
-    sendResponse(0, ApduReplyUserRefusal, false);
-    nbgl_useCaseStatus("Address verification\ncancelled", false, ui_idle);
-}
-
 static void review_choice(bool confirm) {
+    // Answer, display a status page and go back to main
     if (confirm) {
-        confirm_address_approval();
+        sendResponse(set_result_get_pubkey(), ApduReplySuccess, false);
+        nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_VERIFIED, ui_idle);
     } else {
-        confirm_address_rejection();
+        sendResponse(0, ApduReplyUserRefusal, false);
+        nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_REJECTED, ui_idle);
     }
 }
 
-static void continue_review(void) {
-    nbgl_useCaseAddressConfirmation(G_publicKeyStr, review_choice);
-}
-
 void ui_get_public_key(void) {
-    nbgl_useCaseReviewStart(&C_icon_solana_64x64,
-                            "Verify Solana\naddress",
-                            NULL,
-                            "Cancel",
-                            continue_review,
-                            confirm_address_rejection);
+    nbgl_useCaseAddressReview(G_publicKeyStr,
+                              NULL,
+                              &C_icon_solana_64x64,
+                              "Verify Solana address",
+                              NULL,
+                              review_choice);
 }
 
 #endif

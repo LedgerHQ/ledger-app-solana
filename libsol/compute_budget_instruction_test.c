@@ -56,9 +56,12 @@ void test_parse_compute_budget_instructions_invalid_kind() {
     Instruction instruction = {.data = message,
                                .data_length = sizeof(message),
                                .accounts_length = 0};
+
+    MessageHeader* header = {0};
+
     ComputeBudgetInfo info;
 
-    int result = parse_compute_budget_instructions(&instruction, &info);
+    int result = parse_compute_budget_instructions(&instruction, header, &info);
 
     assert(result == 1);  // Invalid instruction kind for ComputeBudget program
 }

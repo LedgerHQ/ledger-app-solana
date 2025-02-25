@@ -140,7 +140,7 @@ void test_static_brief_initializer_macros() {
     assert(memcmp(&stake_test, &stake_expect, sizeof(InstructionBrief)) == 0);
 }
 
-void test_instruction_info_matches_brief_constants(){
+void test_instruction_info_matches_brief_constants() {
     {
         InstructionInfo info = {.kind = ProgramIdSerumAssertOwner};
         InstructionBrief brief_pass = {.program_id = ProgramIdSerumAssertOwner};
@@ -160,14 +160,10 @@ void test_instruction_info_matches_brief_constants(){
     }
 }
 
-void test_instruction_compute_budget_matches_brief(){
-    InstructionInfo info = {
-        .kind = ProgramIdComputeBudget,
-        .compute_budget = {
-            .kind = ComputeBudgetChangeUnitLimit,
-            .change_unit_price = {.units = 0xAABBCCDD}
-        }
-    };
+void test_instruction_compute_budget_matches_brief() {
+    InstructionInfo info = {.kind = ProgramIdComputeBudget,
+                            .compute_budget = {.kind = ComputeBudgetChangeUnitLimit,
+                                               .change_unit_price = {.units = 0xAABBCCDD}}};
 
     {
         InstructionBrief brief_pass = {.program_id = ProgramIdComputeBudget,

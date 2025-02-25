@@ -38,6 +38,7 @@ add_library(sol
     ${LIBSOL_DIR}/transaction_summary.c
     ${LIBSOL_DIR}/transaction_printers.c
     ${LIBSOL_DIR}/vote_instruction.c
+    ${LIBSOL_DIR}/compute_budget_instruction.c
 )
 target_include_directories(sol PUBLIC ${LIBSOL_DIR}/include)
 

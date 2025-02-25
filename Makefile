@@ -1,6 +1,6 @@
 # ****************************************************************************
 #    Ledger App Solana
-#    (c) 2020 Ledger SAS.
+#    (c) 2024 Ledger SAS.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -28,148 +28,105 @@ endif
 
 include $(BOLOS_SDK)/Makefile.defines
 
-APP_LOAD_PARAMS = --curve ed25519
-ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_STAX))
-APP_LOAD_PARAMS += --appFlags 0xa00 # APPLICATION_FLAG_LIBRARY + APPLICATION_FLAG_BOLOS_SETTINGS
-else
-APP_LOAD_PARAMS += --appFlags 0x800 # APPLICATION_FLAG_LIBRARY
-endif
-APP_LOAD_PARAMS += --path "44'/501'"
-APP_LOAD_PARAMS += $(COMMON_LOAD_PARAMS)
+########################################
+#        Mandatory configuration       #
+########################################
+# Application name
+APPNAME = "Solana"
 
-APPNAME      = "Solana"
+# Application version
 APPVERSION_M = 1
-APPVERSION_N = 4
-APPVERSION_P = 3
-APPVERSION   = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
+APPVERSION_N = 7
+APPVERSION_P = 1
+APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-    ICONNAME=icons/nanos_app_solana.gif
-else ifeq ($(TARGET_NAME),TARGET_STAX)
-    ICONNAME=icons/stax_app_solana.gif
-else
-    ICONNAME=icons/nanox_app_solana.gif
-endif
-
-################
-# Default rule #
-################
-all: default
-
-DEFINES += $(DEFINES_LIB)
-DEFINES += APPNAME=\"$(APPNAME)\"
-DEFINES += APPVERSION=\"$(APPVERSION)\"
-DEFINES += MAJOR_VERSION=$(APPVERSION_M) MINOR_VERSION=$(APPVERSION_N) PATCH_VERSION=$(APPVERSION_P)
-DEFINES += OS_IO_SEPROXYHAL
-DEFINES += HAVE_SPRINTF
-DEFINES += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
-DEFINES += USB_SEGMENT_SIZE=64
-DEFINES += BLE_SEGMENT_SIZE=32
-DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
-DEFINES += UNUSED\(x\)=\(void\)x
-
-ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_STAX))
-    DEFINES += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000 HAVE_BLE_APDU
-endif
-
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-    DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=128
-else
-    DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
-endif
-
-ifeq ($(TARGET_NAME),TARGET_STAX)
-    DEFINES += NBGL_QRCODE
-    SDK_SOURCE_PATH += qrcode
-else
-    DEFINES += HAVE_BAGL HAVE_UX_FLOW
-    ifneq ($(TARGET_NAME),TARGET_NANOS)
-        DEFINES += HAVE_GLO096
-        DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64
-        DEFINES += HAVE_BAGL_ELLIPSIS
-        DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
-        DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
-        DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-    endif
-endif
-
-DEBUG = 0
-ifneq ($(DEBUG),0)
-    DEFINES += HAVE_PRINTF
-    ifeq ($(TARGET_NAME),TARGET_NANOS)
-        DEFINES += PRINTF=screen_printf
-    else
-        DEFINES += PRINTF=mcu_usb_printf
-    endif
-else
-        DEFINES += PRINTF\(...\)=
-endif
-
-ifneq ($(BOLOS_ENV),)
-$(info BOLOS_ENV=$(BOLOS_ENV))
-CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
-GCCPATH   := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
-else
-$(info BOLOS_ENV is not set: falling back to CLANGPATH and GCCPATH)
-endif
-ifeq ($(CLANGPATH),)
-$(info CLANGPATH is not set: clang will be used from PATH)
-endif
-ifeq ($(GCCPATH),)
-$(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
-endif
-
-CC      := $(CLANGPATH)clang
-CFLAGS  += -O3 -Os
-AS      := $(GCCPATH)arm-none-eabi-gcc
-LD      := $(GCCPATH)arm-none-eabi-gcc
-LDFLAGS += -O3 -Os
-LDLIBS  += -lm -lgcc -lc
-
-include $(BOLOS_SDK)/Makefile.glyphs
-
+# Application source files
 APP_SOURCE_PATH += src
-SDK_SOURCE_PATH += lib_stusb lib_stusb_impl
+
+# Application icons
+ICON_NANOS = icons/nanos_app_solana.gif
+ICON_NANOX = icons/nanox_app_solana.gif
+ICON_NANOSP = icons/nanox_app_solana.gif
+ICON_STAX = icons/stax_app_solana.gif
+ICON_FLEX = icons/flex_app_solana.gif
+
+# Application allowed derivation curves
+CURVE_APP_LOAD_PARAMS = ed25519
+
+# Application allowed derivation paths.
+PATH_APP_LOAD_PARAMS = "44'/501'"   # purpose=coin(44) / coin_type=Solana(501)
+
+# Setting to allow building variant applications
+VARIANT_PARAM = COIN
+VARIANT_VALUES = solana
+
+# Enabling DEBUG flag will enable PRINTF and disable optimizations
+# DEBUG = 1
+
+########################################
+#     Application custom permissions   #
+########################################
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_STAX TARGET_FLEX))
+HAVE_APPLICATION_FLAG_BOLOS_SETTINGS = 1
+endif
+
+########################################
+# Swap features #
+########################################
+ENABLE_SWAP = 1
+
+########################################
+# Application communication interfaces #
+########################################
+ENABLE_BLUETOOTH = 1
+
+########################################
+#         NBGL custom features         #
+########################################
+ENABLE_NBGL_QRCODE = 1
+
+########################################
+#          Features disablers          #
+########################################
+# These advanced settings allow to disable some feature that are by
+# default enabled in the SDK `Makefile.standard_app`.
+DISABLE_STANDARD_APP_FILES = 1
 
 # Allow usage of function from lib_standard_app/crypto_helpers.c
 APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/crypto_helpers.c
+APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/swap_utils.c
+APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/base58.c
+CFLAGS           += -I${BOLOS_SDK}/lib_standard_app/
 
-ifneq ($(TARGET_NAME),TARGET_STAX)
-SDK_SOURCE_PATH += lib_ux
-endif
-
-ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_STAX))
-    SDK_SOURCE_PATH += lib_blewbxx lib_blewbxx_impl
-endif
-
-WITH_U2F=0
+WITH_U2F?=0
 ifneq ($(WITH_U2F),0)
     DEFINES         += HAVE_U2F HAVE_IO_U2F
     DEFINES         += U2F_PROXY_MAGIC=\"~SOL\"
 		SDK_SOURCE_PATH += lib_u2f
 endif
 
-WITH_LIBSOL=1
+DEFINES += HAVE_SDK_TLV_PARSER
+
+WITH_LIBSOL?=1
 ifneq ($(WITH_LIBSOL),0)
     SOURCE_FILES += $(filter-out %_test.c,$(wildcard libsol/*.c))
     CFLAGS       += -Ilibsol/include
+    CFLAGS       += -Ilibsol
     DEFINES      += HAVE_SNPRINTF_FORMAT_U
     DEFINES      += NDEBUG
 endif
 
-load: all load-only
-load-only:
-	python3 -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
+#######################################
+# Trusted Name Test Mode              #
+#######################################
+TRUSTED_NAME_TEST_KEY ?= 0
+ifneq ($(TRUSTED_NAME_TEST_KEY),0)
+  DEFINES += TRUSTED_NAME_TEST_KEY
+endif
 
-load-offline: all
-	python3 -m ledgerblue.loadApp $(APP_LOAD_PARAMS) --offline
+FIXED_TLV_CHALLENGE ?= 0
+ifneq ($(FIXED_TLV_CHALLENGE),0)
+  DEFINES += FIXED_TLV_CHALLENGE
+endif
 
-delete:
-	python3 -m ledgerblue.deleteApp $(COMMON_DELETE_PARAMS)
-
-include $(BOLOS_SDK)/Makefile.rules
-
-dep/%.d: %.c Makefile
-
-listvariants:
-	@echo VARIANTS COIN solana
+include $(BOLOS_SDK)/Makefile.standard_app
